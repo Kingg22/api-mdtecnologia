@@ -6,14 +6,15 @@ using Microsoft.IdentityModel.Tokens;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-//builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(5154));
+builder.WebHost.ConfigureKestrel(options => options.ListenAnyIP(5294));
+builder.WebHost.UseKestrel();
 builder.Services.AddDbContext<MdtecnologiaContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 builder.Services.AddCors(options => options.AddPolicy("AllowAllOrigins", builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 builder.Services.AddAuthorization();
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(async o =>
 {
     var rsa = System.Security.Cryptography.RSA.Create();
-    rsa.ImportFromPem(File.ReadAllText("public.pem"));
+    rsa.ImportFromPem(await File.ReadAllTextAsync("public.pem"));
     var signKey = new RsaSecurityKey(rsa);
 
     o.RequireHttpsMetadata = false;
