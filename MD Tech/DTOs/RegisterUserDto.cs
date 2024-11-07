@@ -12,7 +12,7 @@ namespace MD_Tech.DTOs
         public string Password { get; set; } = null!;
 
         [Required]
-        public string Rol { get; set; } = null!;
+        public RolesEnum Rol { get; set; }
 
         public bool Disabled { get; set; } = false;
 

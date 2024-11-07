@@ -1,5 +1,4 @@
-﻿using BCrypt.Net;
-using MD_Tech.Contexts;
+﻿using MD_Tech.Contexts;
 using MD_Tech.DTOs;
 using MD_Tech.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -47,7 +46,7 @@ namespace MD_Tech.Controllers
                     {
                         var claims = new[]
                         {
-                            new Claim(ClaimTypes.Name, usuario.Id.ToString()),
+                            new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
                             new Claim(ClaimTypes.Role, usuario.Rol)
                         };
                         var tokenDes = new SecurityTokenDescriptor()
@@ -91,107 +90,173 @@ namespace MD_Tech.Controllers
             if (register.Password.Contains(register.Username))
             {
                 log.Informacion("registro rechazado por contraseña contiene usuario");
-                return BadRequest(new {password = "la contraseña no puede tener su usuario"});
+                return BadRequest(new { password = "la contraseña no puede tener su usuario" });
             }
             var usuario = new Usuarios()
             {
                 Id = Guid.NewGuid(),
                 Username = register.Username,
                 Password = BCrypt.Net.BCrypt.HashPassword(register.Password),
-                Rol = register.Rol,
+                Rol = register.Rol.ToString(),
                 Disabled = register.Disabled,
             };
             await Mdtecnologia.Usuarios.AddAsync(usuario);
             await Mdtecnologia.SaveChangesAsync();
-            var result = await Mdtecnologia.Usuarios.FindAsync(usuario.Id);
-            if (result == null)
+            log.Informacion($"nuevo usuario creado ID: {usuario.Id}");
+            return Created(Url.Action("GetUsuario", "Usuario", new { id = usuario.Id }, Request.Scheme), new
             {
-                log.Errores($"No se encontró la entidad {usuario.Id} después de insertarla en la BD");
-                return StatusCode(500, "Hubo un error al recuperar la entidad después de insertarse, verificar antes de intentar");
-            }
-            var output = new UsuarioDto()
-            {
-                Id = result.Id,
-                Username = result.Username,
-                Rol = result.Rol,
-                Disabled = result.Disabled,
-                CreatedAt = result.CreatedAt,
-                UpdatedAt = result.UpdatedAt,
-            };
-            log.Informacion($"nuevo usuario creado ID: {result.Id}");
-            return Created(Url.Action("GetUsuario", "Usuario", new { id = result.Id }, Request.Scheme), output);
+                usuario =
+                new UsuarioDto()
+                {
+                    Id = usuario.Id,
+                    Username = usuario.Username,
+                    Rol = usuario.Rol,
+                    Disabled = usuario.Disabled,
+                    CreatedAt = usuario.CreatedAt,
+                    UpdatedAt = usuario.UpdatedAt,
+                },
+                warning = "debe relacionar el usuario"
+            });
         }
 
         [HttpPatch("restore")]
         public async Task<ActionResult> ChangePassword([FromBody] RestoreDto restore)
         {
-            var usuario = await Mdtecnologia.Usuarios.FindAsync(restore.Id);
+            var usuario = await Mdtecnologia.Usuarios.Where(u => u.Username.Equals(restore.Username)).FirstAsync();
             if (usuario == null)
             {
                 return NotFound();
-            } 
+            }
             else
             {
-                if (restore.Username.Equals(usuario.Username))
+                if (BCrypt.Net.BCrypt.Verify(restore.Password, usuario.Password))
                 {
-                    if (BCrypt.Net.BCrypt.Verify(restore.Password, usuario.Password))
-                    {
-                        log.Informacion("cambio de contraseña rechazado por ser igual a la actual");
-                        return BadRequest(new {password = "la nueva contraseña no puede ser igual a la actual"});
-                    }
-                    if (restore.Password.Contains(usuario.Username))
-                    {
-                        log.Informacion("cambio de contraseña rechazado por contener su usuario");
-                        return BadRequest(new {password = "la contraseña no puede tener su usuario"});
-                    } 
-                    usuario.Password = BCrypt.Net.BCrypt.HashPassword(restore.Password);
+                    log.Informacion("cambio de contraseña rechazado por ser igual a la actual");
+                    return BadRequest(new { password = "la nueva contraseña no puede ser igual a la actual" });
+                }
+                if (restore.Password.Contains(usuario.Username))
+                {
+                    log.Informacion("cambio de contraseña rechazado por contener su usuario");
+                    return BadRequest(new { password = "la contraseña no puede tener su usuario" });
+                }
+                usuario.Password = BCrypt.Net.BCrypt.HashPassword(restore.Password);
+                await Mdtecnologia.SaveChangesAsync();
+                log.Informacion("nueva contraseña creada");
+                return Ok();
+            }
+        }
+
+        [HttpPut("update")]
+        [Authorize]
+        public async Task<ActionResult> UpdateProfile([FromBody] UsuarioUpdateDto usuarioDto)
+        {
+            var idUser = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (idUser == null || (idUser != null && idUser.Equals(usuarioDto.Id)))
+            {
+                return Unauthorized();
+            }
+            else
+            {
+                if (usuarioDto.Password.Contains(usuarioDto.Username))
+                {
+                    log.Informacion("cambio de contraseña rechazado por contener su usuario");
+                    return BadRequest(new { password = "la contraseña no puede tener su usuario" });
+                }
+                var usuario = await Mdtecnologia.Usuarios.FindAsync(usuarioDto.Id);
+                if (usuario == null)
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    usuario.Username = usuarioDto.Username;
+                    usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDto.Password);
+                    usuario.Rol = usuarioDto.Rol.ToString();
                     await Mdtecnologia.SaveChangesAsync();
-                    log.Informacion("nueva contraseña creada");
-                    return Ok();
-                } else
-                {
-                    log.Informacion($"cambio de contraseña rechazado el usuario no coincide con el ID {usuario.Id}");
-                    return BadRequest(new {username = "los datos no coinciden"});
+                    return Ok(new
+                    {
+                        usuario = new UsuarioDto()
+                        {
+                            Id = usuario.Id,
+                            Username = usuario.Username,
+                            Rol = usuario.Rol,
+                            Disabled = usuario.Disabled,
+                            CreatedAt = usuario.CreatedAt,
+                            UpdatedAt = usuario.UpdatedAt,
+                        }
+                    });
                 }
             }
         }
 
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult<List<Usuarios>>> GetAll([FromQuery] int limit = 25, [FromQuery] int offset = 0)
+        public async Task<ActionResult> GetAll([FromQuery] int limit = 25, [FromQuery] int page = 0)
         {
-            if (offset < 0)
+            // TODO colocar filtrado
+            if (page < 0)
             {
                 return BadRequest(new { offset = "el número de página debe ser mayor o igual a 0" });
             }
             if (limit < 1)
             {
-                return BadRequest(new { limit = "la cantidad debe ser mayor a 0"});
+                return BadRequest(new { limit = "la cantidad debe ser mayor a 0" });
             }
-            log.Depuracion($"Pagination: {offset} Limit {limit}");
-            return await Mdtecnologia.Usuarios.OrderBy(u => u.Id).Skip(offset * limit).Take(limit).ToListAsync();
+            log.Depuracion($"Pagination page: {page} Limit {limit}");
+            var totalUsers = await Mdtecnologia.Usuarios.CountAsync();
+            var hasNextPage = (page + 1) * limit < totalUsers;
+            return Ok(new
+            {
+                count = totalUsers,
+                next = hasNextPage ? Url.Action("GetAll", "Usuarios", new { limit, page = page + 1 }, Request.Scheme) : null,
+                previous = page > 0 ? Url.Action("GetAll", "Usuarios", new { limit, page = page - 1 }, Request.Scheme) : null,
+                usuarios = await Mdtecnologia.Usuarios
+                .OrderBy(u => u.Id)
+                .Skip(page * limit)
+                .Take(limit)
+                .Select(u => new UsuarioDto()
+                {
+                    Id = u.Id,
+                    Username = u.Username,
+                    Rol = u.Rol,
+                    CreatedAt = u.CreatedAt,
+                    UpdatedAt = u.UpdatedAt,
+                    Disabled = u.Disabled,
+                }).ToListAsync()
+            });
         }
 
         [HttpGet("{id}")]
         [Authorize]
         public async Task<ActionResult<UsuarioDto>> GetUsuario(Guid id)
         {
-            var result = await Mdtecnologia.Usuarios.FindAsync(id);
-            if (result == null)
+            var idUser = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (idUser == null || (idUser != null && idUser.Equals(id)))
             {
-                return NotFound();
+                return Unauthorized();
             }
             else
             {
-                return Ok(new UsuarioDto()
+                var result = await Mdtecnologia.Usuarios.FindAsync(id);
+                if (result == null)
                 {
-                    Id = result.Id,
-                    Username = result.Username,
-                    Disabled = result.Disabled,
-                    Rol = result.Rol,
-                    CreatedAt = result.CreatedAt,
-                    UpdatedAt = result.UpdatedAt,
-                });
+                    return NotFound();
+                }
+                else
+                {
+                    return Ok(new
+                    {
+                        usuario = new UsuarioDto()
+                        {
+                            Id = result.Id,
+                            Username = result.Username,
+                            Disabled = result.Disabled,
+                            Rol = result.Rol,
+                            CreatedAt = result.CreatedAt,
+                            UpdatedAt = result.UpdatedAt,
+                        }
+                    });
+                }
             }
         }
     }
