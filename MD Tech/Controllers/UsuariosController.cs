@@ -15,19 +15,19 @@ namespace MD_Tech.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class UsuarioController : ControllerBase
+    public class UsuariosController : ControllerBase
     {
         private readonly MdtecnologiaContext Mdtecnologia;
         private readonly RsaSecurityKey PrivateKey;
         private readonly LogsApi log;
 
-        public UsuarioController(MdtecnologiaContext Mdtecnologia)
+        public UsuariosController(MdtecnologiaContext Mdtecnologia)
         {
             this.Mdtecnologia = Mdtecnologia;
             var rsa = RSA.Create();
             rsa.ImportFromPem(System.IO.File.ReadAllText("private.pem"));
             this.PrivateKey = new RsaSecurityKey(rsa);
-            this.log = new LogsApi(typeof(UsuarioController));
+            this.log = new LogsApi(typeof(UsuariosController));
         }
 
         [HttpPost("login")]
