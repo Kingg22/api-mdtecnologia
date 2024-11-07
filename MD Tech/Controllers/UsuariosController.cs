@@ -142,7 +142,7 @@ namespace MD_Tech.Controllers
                 usuario.Password = BCrypt.Net.BCrypt.HashPassword(restore.Password);
                 await Mdtecnologia.SaveChangesAsync();
                 log.Informacion("nueva contraseña creada");
-                return Ok();
+                return Ok(new { message = "se ha cambiado su contraseña de forma exitosa" });
             }
         }
 
