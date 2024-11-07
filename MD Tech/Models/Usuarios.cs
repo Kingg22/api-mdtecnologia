@@ -16,7 +16,7 @@ public partial class Usuarios
 
     public DateTime? UpdatedAt { get; set; }
 
-    public virtual ICollection<Clientes> Clientes { get; set; } = [];
+    public virtual Clientes? Cliente { get; set; }
 
     public virtual Trabajadores? Trabajadore { get; set; }
 }

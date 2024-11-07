@@ -158,9 +158,18 @@ namespace MD_Tech.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult<List<Usuarios>>> GetAll()
+        public async Task<ActionResult<List<Usuarios>>> GetAll([FromQuery] int limit = 25, [FromQuery] int offset = 0)
         {
-            return await Mdtecnologia.Usuarios.ToListAsync();
+            if (offset < 0)
+            {
+                return BadRequest(new { offset = "el número de página debe ser mayor o igual a 0" });
+            }
+            if (limit < 1)
+            {
+                return BadRequest(new { limit = "la cantidad debe ser mayor a 0"});
+            }
+            log.Depuracion($"Pagination: {offset} Limit {limit}");
+            return await Mdtecnologia.Usuarios.OrderBy(u => u.Id).Skip(offset * limit).Take(limit).ToListAsync();
         }
 
         [HttpGet("{id}")]

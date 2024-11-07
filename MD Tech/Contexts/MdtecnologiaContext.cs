@@ -60,9 +60,11 @@ public partial class MdtecnologiaContext : DbContext
 
             entity.ToTable("clientes");
 
+            entity.HasIndex(e => e.Usuario, "clientes_usuario_key").IsUnique().AreNullsDistinct(false);
+
             entity.HasIndex(e => e.Correo, "clientes_correo_key").IsUnique();
 
-            entity.HasIndex(e => e.Telefono, "clientes_telefono_key").IsUnique();
+            entity.HasIndex(e => e.Telefono, "clientes_telefono_key").IsUnique().AreNullsDistinct(false);
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -88,8 +90,8 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnName("updated_at");
             entity.Property(e => e.Usuario).HasColumnName("usuario");
 
-            entity.HasOne(d => d.UsuarioNavigation).WithMany(p => p.Clientes)
-                .HasForeignKey(d => d.Usuario)
+            entity.HasOne(d => d.UsuarioNavigation).WithOne(p => p.Cliente)
+                .HasForeignKey<Clientes>(c => c.Usuario)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("clientes_usuario_fkey");
         });
@@ -306,9 +308,9 @@ public partial class MdtecnologiaContext : DbContext
 
             entity.ToTable("proveedores");
 
-            entity.HasIndex(e => e.Correo, "proveedores_correo_key").IsUnique();
+            entity.HasIndex(e => e.Correo, "proveedores_correo_key").IsUnique().AreNullsDistinct(false);
 
-            entity.HasIndex(e => e.Telefono, "proveedores_telefono_key").IsUnique();
+            entity.HasIndex(e => e.Telefono, "proveedores_telefono_key").IsUnique().AreNullsDistinct(false);
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -349,9 +351,9 @@ public partial class MdtecnologiaContext : DbContext
 
             entity.HasIndex(e => e.Correo, "trabajadores_correo_key").IsUnique();
 
-            entity.HasIndex(e => e.Telefono, "trabajadores_telefono_key").IsUnique();
+            entity.HasIndex(e => e.Telefono, "trabajadores_telefono_key").IsUnique().AreNullsDistinct(false);
 
-            entity.HasIndex(e => e.Usuario, "trabajadores_usuario_key").IsUnique();
+            entity.HasIndex(e => e.Usuario, "trabajadores_usuario_key").IsUnique().AreNullsDistinct(false);
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
