@@ -231,7 +231,7 @@ namespace MD_Tech.Controllers
         public async Task<ActionResult<UsuarioDto>> GetUsuario(Guid id)
         {
             var idUser = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (idUser == null || (idUser != null && idUser.Equals(id)))
+            if (idUser == null || idUser != id.ToString())
             {
                 return Unauthorized();
             }
