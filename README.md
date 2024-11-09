@@ -21,5 +21,5 @@ git clone https://github.com/Kingg22/api-mdtecnologia.git
    openssl genrsa -out private.pem 2048
    openssl rsa -in private.pem -pubout -out public.pem
    ```
-2. Colocar su contraseña de PostgreSQL en appsettings.json (**cuidado con subir este archivo**)
+2. Colocar su contraseña de PostgreSQL en appsettings.json (⚠️ ADVERTENCIA: No subir este archivo al repositorio. Las credenciales en appsettings.json pueden causar brechas de seguridad. Use user secrets o variables de entorno en su lugar)
 3. Utilizando Swagger u cualquier otro cliente HTTP consumir los endpoints.
