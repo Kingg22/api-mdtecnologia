@@ -13,6 +13,7 @@ namespace MD_Tech.DTOs
         [StringLength(100, MinimumLength = 1)]
         public required string Apellido { get; set; }
 
+        [StringLength(255,MinimumLength =1)]        
         public required string Correo { get; set; }
 
         public string? Telefono { get; set; }
