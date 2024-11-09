@@ -25,39 +25,35 @@ namespace MD_Tech.Controllers
             this.Mdtecnologia = Mdtecnologia;
             var rsa = RSA.Create();
             rsa.ImportFromPem(System.IO.File.ReadAllText("private.pem"));
-            this.PrivateKey = new RsaSecurityKey(rsa);
-            this.log = new LogsApi(typeof(UsuariosController));
+            PrivateKey = new RsaSecurityKey(rsa);
+            log = new LogsApi(typeof(UsuariosController));
         }
 
         [HttpPost("login")]
         public async Task<ActionResult> Login([FromBody] LoginRequest loginRequest)
         {
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var query = Mdtecnologia.Usuarios.Where(u => u.Username.Equals(loginRequest.Email));
-            if (await query.AnyAsync())
+            var usuario = await Mdtecnologia.Usuarios.FirstOrDefaultAsync(u => u.Username.Equals(loginRequest.Email));
+            if (usuario != null)
             {
-                var usuario = await query.FirstAsync();
-                if (usuario?.Password != null)
+                if (usuario.Password != null)
                 {
                     log.Depuracion($"Usuario ID: {usuario.Id}");
                     var passMatch = BCrypt.Net.BCrypt.Verify(loginRequest.Password, usuario.Password);
                     log.Depuracion($"Bcrypt verify: {passMatch}");
                     if (passMatch && !usuario.Disabled)
                     {
-                        var claims = new[]
-                        {
-                            new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()),
-                            new Claim(ClaimTypes.Role, usuario.Rol)
-                        };
                         var tokenDes = new SecurityTokenDescriptor()
                         {
-                            Subject = new ClaimsIdentity(claims),
+                            Subject = new ClaimsIdentity([
+                                new Claim(ClaimTypes.NameIdentifier, usuario.Id.ToString()), 
+                                new Claim(ClaimTypes.Role, usuario.Rol),]),
                             Expires = DateTime.UtcNow.AddHours(1),
                             SigningCredentials = new SigningCredentials(PrivateKey, SecurityAlgorithms.RsaSha256),
                             IssuedAt = DateTime.UtcNow,
                             Issuer = "MDTech",
                             NotBefore = DateTime.UtcNow
                         };
+                        var tokenHandler = new JwtSecurityTokenHandler();
                         var jwtToken = tokenHandler.CreateToken(tokenDes);
                         log.Informacion($"Se ha generado un nuevo token al usuario: {usuario.Id}");
                         return Ok(new { token = tokenHandler.WriteToken(jwtToken) });
@@ -82,19 +78,28 @@ namespace MD_Tech.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<UsuarioDto>> CreateUser([FromBody] RegisterUserDto register)
         {
-            if (await Mdtecnologia.Usuarios.Where(u => u.Username.Equals(register.Username)).AnyAsync())
+            if (await Mdtecnologia.Usuarios.AnyAsync(u => u.Username.Equals(register.Username)))
             {
                 log.Informacion("registro rechazado ya existe ese username");
                 return BadRequest(new { username = "nombre de usuario en uso, intente nuevamente" });
             }
-            if (register.Password.Contains(register.Username))
+            if (string.IsNullOrWhiteSpace(register.Password) || register.Password.Contains(register.Username))
             {
                 log.Informacion("registro rechazado por contraseña contiene usuario");
-                return BadRequest(new { password = "la contraseña no puede tener su usuario" });
+                return BadRequest(new { password = "ingrese una contraseña válida" });
+            }
+            if (string.IsNullOrWhiteSpace(register.Username))
+            {
+                log.Informacion("No proporcionó un username");
+                return BadRequest(new { username = "el username es requerido" });
+            }
+            if (register.Id != null && await Mdtecnologia.Usuarios.FindAsync(register.Id) != null)
+            {
+                return BadRequest(new { Id = "id proporcionado en uso" });
             }
             var usuario = new Usuarios()
             {
-                Id = Guid.NewGuid(),
+                Id = register.Id ?? Guid.NewGuid(),
                 Username = register.Username,
                 Password = BCrypt.Net.BCrypt.HashPassword(register.Password),
                 Rol = register.Rol.ToString(),
@@ -103,7 +108,7 @@ namespace MD_Tech.Controllers
             await Mdtecnologia.Usuarios.AddAsync(usuario);
             await Mdtecnologia.SaveChangesAsync();
             log.Informacion($"nuevo usuario creado ID: {usuario.Id}");
-            return Created(Url.Action("GetUsuario", "Usuario", new { id = usuario.Id }, Request.Scheme), new
+            return Created(Url.Action(nameof(GetUsuario), "Usuarios", new { id = usuario.Id }, Request.Scheme), new
             {
                 usuario =
                 new UsuarioDto()
@@ -119,10 +124,10 @@ namespace MD_Tech.Controllers
             });
         }
 
-        [HttpPatch("restore")]
+        [HttpPatch("restore-password")]
         public async Task<ActionResult> ChangePassword([FromBody] RestoreDto restore)
         {
-            var usuario = await Mdtecnologia.Usuarios.Where(u => u.Username.Equals(restore.Username)).FirstAsync();
+            var usuario = await Mdtecnologia.Usuarios.FirstOrDefaultAsync(u => u.Username.Equals(restore.Username));
             if (usuario == null)
             {
                 return NotFound();
@@ -146,47 +151,58 @@ namespace MD_Tech.Controllers
             }
         }
 
-        [HttpPut("update")]
+        [HttpPut("{id}")]
         [Authorize]
-        public async Task<ActionResult> UpdateProfile([FromBody] UsuarioUpdateDto usuarioDto)
+        public async Task<ActionResult> UpdateProfile(Guid id, [FromBody] UsuarioUpdateDto usuarioDto)
         {
-            var idUser = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (idUser == null || (idUser != null && idUser.Equals(usuarioDto.Id)))
+            if (id != usuarioDto.Id)
             {
-                return Unauthorized();
+                log.Informacion($"usuario de id {id} no coincide con el body id {usuarioDto.Id}");
+                return BadRequest();
+            }
+            if (usuarioDto.Password.Contains(usuarioDto.Username))
+            {
+                log.Informacion("cambio de contraseña rechazado por contener su usuario");
+                return BadRequest(new { password = "la contraseña no puede tener su usuario" });
+            }
+            var usuario = await Mdtecnologia.Usuarios.FindAsync(usuarioDto.Id);
+            if (usuario == null)
+            {
+                return NotFound();
             }
             else
             {
-                if (usuarioDto.Password.Contains(usuarioDto.Username))
+                usuario.Username = usuarioDto.Username;
+                usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDto.Password);
+                usuario.Rol = usuarioDto.Rol.ToString();
+                await Mdtecnologia.SaveChangesAsync();
+                return Ok(new
                 {
-                    log.Informacion("cambio de contraseña rechazado por contener su usuario");
-                    return BadRequest(new { password = "la contraseña no puede tener su usuario" });
-                }
-                var usuario = await Mdtecnologia.Usuarios.FindAsync(usuarioDto.Id);
-                if (usuario == null)
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    usuario.Username = usuarioDto.Username;
-                    usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDto.Password);
-                    usuario.Rol = usuarioDto.Rol.ToString();
-                    await Mdtecnologia.SaveChangesAsync();
-                    return Ok(new
+                    usuario = new UsuarioDto()
                     {
-                        usuario = new UsuarioDto()
-                        {
-                            Id = usuario.Id,
-                            Username = usuario.Username,
-                            Rol = usuario.Rol,
-                            Disabled = usuario.Disabled,
-                            CreatedAt = usuario.CreatedAt,
-                            UpdatedAt = usuario.UpdatedAt,
-                        }
-                    });
-                }
+                        Id = usuario.Id,
+                        Username = usuario.Username,
+                        Rol = usuario.Rol,
+                        Disabled = usuario.Disabled,
+                        CreatedAt = usuario.CreatedAt,
+                        UpdatedAt = usuario.UpdatedAt,
+                    }
+                });
             }
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize]
+        public async Task<ActionResult> DeleteUser(Guid id)
+        {
+            var usuario = await Mdtecnologia.Usuarios.FindAsync(id);
+            if (usuario != null)
+            {
+                Mdtecnologia.Usuarios.Remove(usuario);
+                await Mdtecnologia.SaveChangesAsync();
+                return Ok();
+            }
+            return NotFound();
         }
 
         [HttpGet]
@@ -222,7 +238,9 @@ namespace MD_Tech.Controllers
                     CreatedAt = u.CreatedAt,
                     UpdatedAt = u.UpdatedAt,
                     Disabled = u.Disabled,
-                }).ToListAsync()
+                })
+                .AsNoTracking()
+                .ToListAsync()
             });
         }
 
@@ -230,34 +248,19 @@ namespace MD_Tech.Controllers
         [Authorize]
         public async Task<ActionResult<UsuarioDto>> GetUsuario(Guid id)
         {
-            var idUser = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (idUser == null || idUser != id.ToString())
+            var result = await Mdtecnologia.Usuarios.FindAsync(id);
+            return result == null ? NotFound() : Ok(new
             {
-                return Unauthorized();
-            }
-            else
-            {
-                var result = await Mdtecnologia.Usuarios.FindAsync(id);
-                if (result == null)
+                usuario = new UsuarioDto()
                 {
-                    return NotFound();
+                    Id = result.Id,
+                    Username = result.Username,
+                    Disabled = result.Disabled,
+                    Rol = result.Rol,
+                    CreatedAt = result.CreatedAt,
+                    UpdatedAt = result.UpdatedAt,
                 }
-                else
-                {
-                    return Ok(new
-                    {
-                        usuario = new UsuarioDto()
-                        {
-                            Id = result.Id,
-                            Username = result.Username,
-                            Disabled = result.Disabled,
-                            Rol = result.Rol,
-                            CreatedAt = result.CreatedAt,
-                            UpdatedAt = result.UpdatedAt,
-                        }
-                    });
-                }
-            }
+            });
         }
     }
 }

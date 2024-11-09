@@ -4,6 +4,8 @@ namespace MD_Tech.DTOs
 {
     public class RegisterUserDto
     {
+        public Guid? Id { get; set; }
+
         [Required]
         public string Username { get; set; } = null!;
 
