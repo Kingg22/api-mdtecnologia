@@ -18,7 +18,7 @@ git clone https://github.com/Kingg22/api-mdtecnologia.git
 
 1. Crear el par de llaves del certificado RSA. Abra una terminal de git en el proyecto y ejecute:
    ```bash
-   openssl genrsa -out private.pem 4096
+   openssl genrsa -out private.pem 2048
    openssl rsa -in private.pem -pubout -out public.pem
    ```
 2. Colocar su contraseña de PostgreSQL en appsettings.json (**cuidado con subir este archivo**)
