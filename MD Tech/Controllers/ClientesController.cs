@@ -25,9 +25,20 @@ namespace MD_Tech.Controllers
         [Authorize]
         public async Task<ActionResult<List<Clientes>>> getClientes()
         {
-            return Ok(await mdtecnologiaContext.Clientes.ToListAsync());
+            return Ok(await mdtecnologiaContext.Clientes
+                .AsNoTracking()
+                .Select(c => new ClienteDto()
+                {
+                    Id = c.Id,
+                    Nombre=c.Nombre,  
+                    Apellido=c.Apellido,
+                    Correo=c.Correo, 
+                    Telefono=c.Telefono,
+                    IdUsuario= c.Usuario
+                })
+                .ToListAsync());
         }
-
+        
         [HttpPost]
         [Authorize]
         public async Task<ActionResult> AddCliente([FromBody] ClienteDto newCliente)
@@ -77,11 +88,19 @@ namespace MD_Tech.Controllers
         public async Task<ActionResult> GetCliente(Guid id)
         {
             var resultado = await mdtecnologiaContext.Clientes.FindAsync(id);
-            return resultado != null ? Ok(new { cliente = resultado }) : NotFound();
+            return resultado != null ? Ok(new { cliente = new ClienteDto() 
+            {
+                Id = resultado.Id,
+                Nombre = resultado.Nombre,
+                Apellido = resultado.Apellido,
+                Correo = resultado.Correo,
+                Telefono = resultado.Telefono,
+                IdUsuario = resultado.Usuario
+            }
+            }) : NotFound();
         }
 
         [HttpPost("usuario")]
-        [SwaggerIgnore]
         public async Task<ActionResult> CrearClienteUsuario([FromBody] ClienteUsuarioDto clienteUsuario)
         {
             using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
@@ -159,7 +178,7 @@ namespace MD_Tech.Controllers
                 return Problem();
             }
         }
-
+        [SwaggerIgnore]
         private async Task<Clientes> CrearCliente(ClienteDto newCliente)
         {
             var usuario = await mdtecnologiaContext.Usuarios.FindAsync(newCliente.IdUsuario);
@@ -198,12 +217,7 @@ namespace MD_Tech.Controllers
                     logsApi.Informacion("Correo rechazado por no contener @");
                     return BadRequest(new { message = "Ingrese un correo válido" });
                 }
-                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.correo);
-                if (verificorreo)
-                {
-                    logsApi.Informacion("El correo ya esta registrado");
-                    return BadRequest(new { correo = "Correo ya en Uso" });
-                }
+                
                 var cliente = await mdtecnologiaContext.Clientes.FindAsync(newCorreo.Id);
                 if (cliente == null)
                 {
@@ -211,13 +225,17 @@ namespace MD_Tech.Controllers
                     return NotFound();
                 }
                 if (cliente.Correo == newCorreo.correo) {
-                    logsApi.Informacion("Correo nuvo igual al Viejo");
-                    return BadRequest(new { correo = "No puede Cambiar el Correo Al que tiene en uso" });
+                    logsApi.Informacion("Correo rechazado por ser igual al actual");
+                    return BadRequest(new { correo = "El correo proporcionado es igual al correo actual" });
+                }
+                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.correo);
+                if (verificorreo)
+                {
+                    logsApi.Informacion("El correo ya esta registrado");
+                    return BadRequest(new { correo = "Correo ya en Uso" });
                 }
 
-
                 cliente.Correo = newCorreo.correo;
-
                 await mdtecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 
