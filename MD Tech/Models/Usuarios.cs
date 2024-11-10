@@ -18,5 +18,5 @@ public partial class Usuarios
 
     public virtual Clientes? Cliente { get; set; }
 
-    public virtual Trabajadores? Trabajadore { get; set; }
+    public virtual Trabajadores? Trabajador { get; set; }
 }

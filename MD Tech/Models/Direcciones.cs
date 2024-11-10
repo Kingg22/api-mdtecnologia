@@ -14,5 +14,5 @@ public partial class Direcciones
 
     public virtual Provincia ProvinciaNavigation { get; set; } = null!;
 
-    public virtual ICollection<Ventas> Venta { get; set; } = [];
+    public virtual ICollection<Ventas> Ventas { get; set; } = [];
 }
