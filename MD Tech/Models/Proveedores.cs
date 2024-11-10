@@ -16,7 +16,7 @@ public partial class Proveedores
 
     public virtual Direcciones? DireccionNavigation { get; set; }
 
-    public virtual ICollection<OrdenesCompraProveedor> OrdenesCompraProveedors { get; set; } = [];
+    public virtual ICollection<OrdenesCompraProveedor> OrdenesCompraProveedores { get; set; } = [];
 
     public virtual ICollection<ProductosProveedor> ProductosProveedores { get; set; } = [];
 }
