@@ -243,7 +243,7 @@ public partial class MdtecnologiaContext : DbContext
             entity.Property(e => e.IdOrden).HasColumnName("id_orden");
             entity.Property(e => e.Proveedor).HasColumnName("proveedor");
 
-            entity.HasOne(d => d.ProveedorNavigation).WithMany(p => p.OrdenesCompraProveedors)
+            entity.HasOne(d => d.ProveedorNavigation).WithMany(p => p.OrdenesCompraProveedores)
                 .HasForeignKey(d => d.Proveedor)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("ordenes_compra_proveedor_proveedor_fkey");
@@ -389,7 +389,7 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnName("updated_at");
             entity.Property(e => e.Usuario).HasColumnName("usuario");
 
-            entity.HasOne(d => d.UsuarioNavigation).WithOne(p => p.Trabajadore)
+            entity.HasOne(d => d.UsuarioNavigation).WithOne(p => p.Trabajador)
                 .HasForeignKey<Trabajadores>(d => d.Usuario)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("trabajadores_usuario_fkey");
@@ -460,12 +460,12 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnType("money")
                 .HasColumnName("total");
 
-            entity.HasOne(d => d.ClienteNavigation).WithMany(p => p.Venta)
+            entity.HasOne(d => d.ClienteNavigation).WithMany(p => p.Ventas)
                 .HasForeignKey(d => d.Cliente)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("ventas_cliente_fkey");
 
-            entity.HasOne(d => d.DireccionEntregaNavigation).WithMany(p => p.Venta)
+            entity.HasOne(d => d.DireccionEntregaNavigation).WithMany(p => p.Ventas)
                 .HasForeignKey(d => d.DireccionEntrega)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("ventas_direccion_entrega_fkey");

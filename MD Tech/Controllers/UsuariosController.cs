@@ -30,7 +30,7 @@ namespace MD_Tech.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult> Login([FromBody] LoginRequest loginRequest)
+        public async Task<ActionResult<Dictionary<string, string>>> Login([FromBody] LoginRequest loginRequest)
         {
             var usuario = await Mdtecnologia.Usuarios.FirstOrDefaultAsync(u => u.Username.Equals(loginRequest.Email));
             if (usuario != null)
@@ -125,7 +125,7 @@ namespace MD_Tech.Controllers
         }
 
         [HttpPatch("restore-password")]
-        public async Task<ActionResult> ChangePassword([FromBody] RestoreDto restore)
+        public async Task<ActionResult<Dictionary<string, string>>> ChangePassword([FromBody] RestoreDto restore)
         {
             var usuario = await Mdtecnologia.Usuarios.FirstOrDefaultAsync(u => u.Username.Equals(restore.Username));
             if (usuario == null)
@@ -153,7 +153,7 @@ namespace MD_Tech.Controllers
 
         [HttpPut("{id}")]
         [Authorize]
-        public async Task<ActionResult> UpdateProfile(Guid id, [FromBody] UsuarioUpdateDto usuarioDto)
+        public async Task<ActionResult<UsuarioDto>> UpdateProfile(Guid id, [FromBody] UsuarioUpdateDto usuarioDto)
         {
             if (id != usuarioDto.Id)
             {
@@ -200,14 +200,14 @@ namespace MD_Tech.Controllers
             {
                 Mdtecnologia.Usuarios.Remove(usuario);
                 await Mdtecnologia.SaveChangesAsync();
-                return Ok();
+                return NoContent();
             }
             return NotFound();
         }
 
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult> GetAll([FromQuery] int limit = 25, [FromQuery] int page = 0)
+        public async Task<ActionResult<List<UsuarioDto>>> GetAll([FromQuery] int limit = 25, [FromQuery] int page = 0)
         {
             // TODO colocar filtrado
             if (page < 0)
@@ -224,8 +224,8 @@ namespace MD_Tech.Controllers
             return Ok(new
             {
                 count = totalUsers,
-                next = hasNextPage ? Url.Action("GetAll", "Usuarios", new { limit, page = page + 1 }, Request.Scheme) : null,
-                previous = page > 0 ? Url.Action("GetAll", "Usuarios", new { limit, page = page - 1 }, Request.Scheme) : null,
+                next = hasNextPage ? Url.Action(nameof(GetAll), "Usuarios", new { limit, page = page + 1 }, Request.Scheme) : null,
+                previous = page > 0 ? Url.Action(nameof(GetAll), "Usuarios", new { limit, page = page - 1 }, Request.Scheme) : null,
                 usuarios = await Mdtecnologia.Usuarios
                 .OrderBy(u => u.Id)
                 .Skip(page * limit)
