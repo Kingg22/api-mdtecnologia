@@ -111,6 +111,7 @@ namespace MD_Tech.Controllers
                 productos = await query
                 .Skip(paginacionDto.Page * paginacionDto.Limit)
                 .Take(paginacionDto.Limit)
+                .Include(producto => producto.ProductosProveedores)
                 .Select(p => new ProductosDto()
                 {
                     Id = p.Id,
@@ -138,15 +139,8 @@ namespace MD_Tech.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductosDto>> GetProductos(Guid id)
         {
-            var p = await MdTecnologiaContext.Productos.FindAsync(id);
-
-            if (p == null)
-            {
-                logs.Informacion($"Producto con id {id} a buscar no fue encontrado");
-                return NotFound();
-            }
-
-            return Ok(new
+            var p = await MdTecnologiaContext.Productos.Include(producto => producto.ProductosProveedores).FirstOrDefaultAsync();
+            return p == null ? NotFound() : Ok(new
             {
                 producto = new ProductosDto()
                 {
@@ -172,22 +166,15 @@ namespace MD_Tech.Controllers
 
         // TODO cambiar todo sobre imagenes a una tabla aparte con links de AWS S3
         [HttpGet("image/{id}")]
-        public async Task<ActionResult<FileContentResult>> GetImage(Guid id)
+        public async Task<ActionResult> GetImage(Guid id)
         {
             var producto = await MdTecnologiaContext.Productos.FindAsync(id);
-            if (producto == null)
-            {
-                return NotFound();
-            }
-            else if (producto.ImagenFile != null)
+            if (producto != null && producto.ImagenFile != null)
             {
                 // TODO cambiar por columna en la BD de tipo de imagen
-                return File(producto.ImagenFile, "image/png");
+                return File(producto.ImagenFile, "image/jpg");
             }
-            else
-            {
-                return NoContent();
-            }
+            return NotFound();
         }
 
         [HttpPut("{id}")]
@@ -240,7 +227,7 @@ namespace MD_Tech.Controllers
                     return BadRequest(new { imagen2 = "Imagen2 debe ser una URL válida o null si no se usa." });
                 }
             }
-            if (await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
+            if (productoDto.Categoria != null && await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
             {
                 return NotFound(new { categoria = "categoria de producto no encontrada" });
             }
@@ -273,7 +260,7 @@ namespace MD_Tech.Controllers
                                 // Actualizar la relación existente
                                 relacion.Precio = proveedorDto.Precio;
                                 relacion.Impuesto = proveedorDto.Impuesto;
-                                relacion.Total = proveedorDto.Precio * proveedorDto.Impuesto;
+                                relacion.Total = proveedorDto.Precio + proveedorDto.Impuesto;
                                 relacion.FechaActualizado = proveedorDto.FechaActualizado != null ? (DateOnly)proveedorDto.FechaActualizado : DateOnly.FromDateTime(DateTime.UtcNow);
                                 relacion.Stock = proveedorDto.Stock;
 
@@ -316,6 +303,7 @@ namespace MD_Tech.Controllers
                 {
                     producto = new ProductosDto()
                     {
+                        Id = producto.Id,
                         Nombre = producto.Nombre,
                         Marca = producto.Marca,
                         Descripcion = producto.Descripcion,
@@ -387,7 +375,7 @@ namespace MD_Tech.Controllers
                     return BadRequest(new { imagen2 = "Imagen2 debe ser una URL válida o null si no se usa." });
                 }
             }
-            if (await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
+            if (productoDto.Categoria != null && await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
             {
                 return NotFound(new { categoria = "categoria de producto no encontrada" });
             }
@@ -426,7 +414,7 @@ namespace MD_Tech.Controllers
                                 Proveedor = proveedorDto.Proveedor,
                                 Precio = proveedorDto.Precio,
                                 Impuesto = proveedorDto.Impuesto,
-                                Total = proveedorDto.Precio * proveedorDto.Impuesto,
+                                Total = proveedorDto.Precio + proveedorDto.Impuesto,
                                 FechaActualizado = proveedorDto.FechaActualizado != null ? (DateOnly)proveedorDto.FechaActualizado : DateOnly.FromDateTime(DateTime.UtcNow),
                                 Stock = proveedorDto.Stock
                             };
@@ -445,6 +433,7 @@ namespace MD_Tech.Controllers
                 {
                     producto = new ProductosDto()
                     {
+                        Id = productoDto.Id,
                         Nombre = productos.Nombre,
                         Marca = productos.Marca,
                         Descripcion = productos.Descripcion,
@@ -472,14 +461,14 @@ namespace MD_Tech.Controllers
         }
 
         [HttpPost("image/{id}")]
-        public async Task<ActionResult> UploadImage(Guid id, IFormFile imageFile)
+        public async Task<ActionResult> UploadImage(Guid id, IFormFile image)
         {
-            if (imageFile == null || imageFile.Length == 0)
+            if (image == null || image.Length == 0)
             {
                 return BadRequest(new { message = "No se ha proporcionado un archivo de imagen válido." });
             }
 
-            if (!imageFile.ContentType.StartsWith("image/"))
+            if (!image.ContentType.StartsWith("image/"))
             {
                 return BadRequest(new { message = "El archivo debe ser una imagen válida." });
             }
@@ -489,7 +478,7 @@ namespace MD_Tech.Controllers
             if (producto != null)
             {
                 using var memoryStream = new MemoryStream();
-                await imageFile.CopyToAsync(memoryStream);
+                await image.CopyToAsync(memoryStream);
                 var imageData = memoryStream.ToArray();
 
                 producto.ImagenFile = imageData;
