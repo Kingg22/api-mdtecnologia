@@ -48,10 +48,16 @@ public partial class MdtecnologiaContext : DbContext
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
                 .HasColumnName("id");
+            entity.Property(e => e.CategoriaPadre).HasColumnName("categoria_padre");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
             entity.Property(e => e.Nombre)
                 .HasMaxLength(50)
                 .HasColumnName("nombre");
+
+            entity.HasOne(d => d.CategoriaPadreNavigation).WithMany(p => p.InverseCategoriaPadreNavigation)
+                .HasForeignKey(d => d.CategoriaPadre)
+                .OnDelete(DeleteBehavior.SetNull)
+                .HasConstraintName("categorias_categoria_padre_fkey");
         });
 
         modelBuilder.Entity<Clientes>(entity =>
@@ -60,11 +66,11 @@ public partial class MdtecnologiaContext : DbContext
 
             entity.ToTable("clientes");
 
-            entity.HasIndex(e => e.Usuario, "clientes_usuario_key").IsUnique().AreNullsDistinct(false);
+            entity.HasIndex(e => e.Usuario, "clientes_usuario_key").IsUnique();
 
             entity.HasIndex(e => e.Correo, "clientes_correo_key").IsUnique();
 
-            entity.HasIndex(e => e.Telefono, "clientes_telefono_key").IsUnique().AreNullsDistinct(false);
+            entity.HasIndex(e => e.Telefono, "clientes_telefono_key").IsUnique();
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -222,6 +228,25 @@ public partial class MdtecnologiaContext : DbContext
                 .HasConstraintName("historial_productos_producto_fkey");
         });
 
+        modelBuilder.Entity<ImagenesProducto>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("imagenes_productos_pkey");
+
+            entity.ToTable("imagenes_productos");
+
+            entity.Property(e => e.Id)
+                .HasDefaultValueSql("gen_random_uuid()")
+                .HasColumnName("id");
+            entity.Property(e => e.Descripcion).HasColumnName("descripcion");
+            entity.Property(e => e.Producto).HasColumnName("producto");
+            entity.Property(e => e.Url).HasColumnName("url");
+
+            entity.HasOne(d => d.ProductoNavigation).WithMany(p => p.ImagenesProductos)
+                .HasForeignKey(d => d.Producto)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("imagenes_productos_producto_fkey");
+        });
+
         modelBuilder.Entity<OrdenesCompraProveedor>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("ordenes_compra_proveedor_pkey");
@@ -303,9 +328,9 @@ public partial class MdtecnologiaContext : DbContext
 
             entity.ToTable("proveedores");
 
-            entity.HasIndex(e => e.Correo, "proveedores_correo_key").IsUnique().AreNullsDistinct(false);
+            entity.HasIndex(e => e.Correo, "proveedores_correo_key").IsUnique();
 
-            entity.HasIndex(e => e.Telefono, "proveedores_telefono_key").IsUnique().AreNullsDistinct(false);
+            entity.HasIndex(e => e.Telefono, "proveedores_telefono_key").IsUnique();
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")
@@ -346,9 +371,9 @@ public partial class MdtecnologiaContext : DbContext
 
             entity.HasIndex(e => e.Correo, "trabajadores_correo_key").IsUnique();
 
-            entity.HasIndex(e => e.Telefono, "trabajadores_telefono_key").IsUnique().AreNullsDistinct(false);
+            entity.HasIndex(e => e.Telefono, "trabajadores_telefono_key").IsUnique();
 
-            entity.HasIndex(e => e.Usuario, "trabajadores_usuario_key").IsUnique().AreNullsDistinct(false);
+            entity.HasIndex(e => e.Usuario, "trabajadores_usuario_key").IsUnique();
 
             entity.Property(e => e.Id)
                 .HasDefaultValueSql("gen_random_uuid()")

@@ -20,5 +20,7 @@ public partial class Productos
 
     public virtual ICollection<DetallesVentas> DetallesVenta { get; set; } = [];
 
+    public virtual ICollection<ImagenesProducto> ImagenesProductos { get; set; } = [];
+
     public virtual ICollection<ProductosProveedor> ProductosProveedores { get; set; } = [];
 }
