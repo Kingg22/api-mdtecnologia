@@ -8,5 +8,11 @@ public partial class Categorias
 
     public string? Descripcion { get; set; }
 
+    public Guid? CategoriaPadre { get; set; }
+
+    public virtual Categorias? CategoriaPadreNavigation { get; set; }
+
+    public virtual ICollection<Categorias> InverseCategoriaPadreNavigation { get; set; } = [];
+
     public virtual ICollection<Productos> Productos { get; set; } = [];
 }
