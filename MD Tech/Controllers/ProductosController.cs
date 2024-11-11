@@ -112,7 +112,8 @@ namespace MD_Tech.Controllers
                 productos = await query
                 .Skip(paginacionDto.Page * paginacionDto.Limit)
                 .Take(paginacionDto.Limit)
-                .Include(producto => producto.ProductosProveedores)
+                .Include(p => p.ImagenesProductos)
+                .Include(p => p.ProductosProveedores)
                 .Select(p => new ProductosDto()
                 {
                     Id = p.Id,
@@ -120,8 +121,13 @@ namespace MD_Tech.Controllers
                     Marca = p.Marca,
                     Descripcion = p.Descripcion,
                     Categoria = p.Categoria,
-                    Imagen1 = p.ImagenFile != null ? Url.Action(nameof(GetImage), "Productos", new { id = p.Id }, Request.Scheme) : null,
-                    Imagen2 = p.ImagenUrl,
+                    Imagenes = p.ImagenesProductos.Select(img => new ImagenesProductoDto()
+                    {
+                        Id = img.Id,
+                        Url = img.Url,
+                        Descripcion = img.Descripcion,
+                        Producto = img.Producto,
+                    }).ToList(),
                     Proveedores = p.ProductosProveedores.Select(pp => new ProductoProveedorDto()
                     {
                         Producto = pp.Producto,
@@ -140,7 +146,11 @@ namespace MD_Tech.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductosDto>> GetProductos(Guid id)
         {
-            var p = await MdTecnologiaContext.Productos.Include(producto => producto.ProductosProveedores).OrderBy(p => p.Id).FirstOrDefaultAsync();
+            var p = await MdTecnologiaContext.Productos
+                .Include(producto => producto.ProductosProveedores)
+                .Include(p => p.ImagenesProductos)
+                .OrderBy(p => p.Id)
+                .FirstOrDefaultAsync();
             return p == null ? NotFound() : Ok(new
             {
                 producto = new ProductosDto()
@@ -149,8 +159,13 @@ namespace MD_Tech.Controllers
                     Nombre = p.Nombre,
                     Marca = p.Marca,
                     Descripcion = p.Descripcion,
-                    Imagen1 = p.ImagenFile != null ? Url.Action(nameof(GetImage), "Productos", new { id = p.Id }, Request.Scheme) : null,
-                    Imagen2 = p.ImagenUrl,
+                    Imagenes = p.ImagenesProductos.Select(img => new ImagenesProductoDto()
+                    {
+                        Id = img.Id,
+                        Url = img.Url,
+                        Descripcion = img.Descripcion,
+                        Producto = img.Producto,
+                    }).ToList(),
                     Proveedores = p.ProductosProveedores.Select(pp => new ProductoProveedorDto()
                     {
                         Producto = pp.Producto,
@@ -163,19 +178,6 @@ namespace MD_Tech.Controllers
                     }).ToList()
                 }
             });
-        }
-
-        // TODO cambiar todo sobre imagenes a una tabla aparte con links de AWS S3
-        [HttpGet("image/{id}")]
-        public async Task<ActionResult> GetImage(Guid id)
-        {
-            var producto = await MdTecnologiaContext.Productos.FindAsync(id);
-            if (producto != null && producto.ImagenFile != null)
-            {
-                // TODO cambiar por columna en la BD de tipo de imagen
-                return File(producto.ImagenFile, "image/jpg");
-            }
-            return NotFound();
         }
 
         [HttpPut("{id}")]
@@ -192,24 +194,6 @@ namespace MD_Tech.Controllers
             {
                 return NotFound(new { id = "producto no encontrado" });
             }
-            // No se permiten 2 imagenes tipo link (por ahora)
-            if (!string.IsNullOrWhiteSpace(productoDto.Imagen1) && !string.IsNullOrWhiteSpace(productoDto.Imagen2))
-            {
-                return BadRequest(new
-                {
-                    message = "Solo se soporta una imagen: Imagen1 como archivo o Imagen2 como URL. Deje uno de los campos como null. Para subir como archivo posterior a crear utilizar " +
-                    Url.Action(nameof(UploadImage), "Productos", new { id = productoDto.Id }, Request.Scheme)
-                });
-            }
-            // No permite imagen1 deben usar otro endpoint
-            if (!string.IsNullOrWhiteSpace(productoDto.Imagen1))
-            {
-                return BadRequest(new
-                {
-                    message = "para imagenes como archivo debe hacerlo posterior a la creación en " +
-                    Url.Action(nameof(UploadImage), "Productos", new { id = productoDto.Id }, Request.Scheme)
-                });
-            }
             // Campos obligatorios tipo string
             if (string.IsNullOrWhiteSpace(productoDto.Nombre) || string.IsNullOrWhiteSpace(productoDto.Marca))
             {
@@ -219,14 +203,6 @@ namespace MD_Tech.Controllers
             if (productoDto.Descripcion != null && string.IsNullOrWhiteSpace(productoDto.Descripcion))
             {
                 return BadRequest(new { descripcion = "la descripción no puede ser espacios en blanco" });
-            }
-            // Permite null a la imagenUrl, pero si fue dado se valida la url
-            if (!string.IsNullOrWhiteSpace(productoDto.Imagen2))
-            {
-                if (!IsValidUrl(productoDto.Imagen2))
-                {
-                    return BadRequest(new { imagen2 = "Imagen2 debe ser una URL válida o null si no se usa." });
-                }
             }
             if (productoDto.Categoria != null && await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
             {
@@ -241,7 +217,6 @@ namespace MD_Tech.Controllers
                 producto.Descripcion = productoDto.Descripcion;
                 await transaction.CreateSavepointAsync("producto");
 
-                var listaProveedores = new List<ProductosProveedor>();
                 if (productoDto.Proveedores != null && productoDto.Proveedores.Count != 0)
                 {
                     try
@@ -264,8 +239,6 @@ namespace MD_Tech.Controllers
                                 relacion.Total = proveedorDto.Precio + proveedorDto.Impuesto;
                                 relacion.FechaActualizado = proveedorDto.FechaActualizado != null ? (LocalDate)proveedorDto.FechaActualizado : LocalDate.FromDateTime(DateTime.UtcNow);
                                 relacion.Stock = proveedorDto.Stock;
-
-                                listaProveedores.Add(relacion);
                             }
                             else
                             {
@@ -280,8 +253,6 @@ namespace MD_Tech.Controllers
                                     Stock = proveedorDto.Stock
                                 };
                                 await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
-
-                                listaProveedores.Add(productoProveedor);
                             }
                         }
                         await MdTecnologiaContext.SaveChangesAsync();
@@ -290,16 +261,50 @@ namespace MD_Tech.Controllers
                     {
                         logs.Excepciones(ex, "Error al actualizar relacionaciones producto - proveedor");
                         await transaction.RollbackToSavepointAsync("producto");
-                        listaProveedores.Clear();
-                        // Evaluar si eliminar toda lista de proveedores o volver a cargar la lista que existía en la BD
-                        // antes de actualizar 
                     }
                 }
-                if (listaProveedores.Count > 0)
+                await transaction.CreateSavepointAsync("proveedores");
+
+                if (productoDto.Imagenes != null && productoDto.Imagenes.Count > 0)
                 {
-                    producto.ProductosProveedores = listaProveedores;
-                    await MdTecnologiaContext.SaveChangesAsync();
+                    try
+                    {
+                        logs.Informacion("Relaciones de imagenes producto encontradas. Procesando...");
+                        foreach (var imagenDto in productoDto.Imagenes)
+                        {
+                            if (!string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url))
+                            {
+                                if (imagenDto.Descripcion != null && string.IsNullOrEmpty(imagenDto.Descripcion))
+                                {
+                                    logs.Advertencia($"Colocando null a descripción inválida, url: {imagenDto.Url}");
+                                    imagenDto.Descripcion = null;
+                                }
+                                var imagenProducto = new ImagenesProducto()
+                                {
+                                    Producto = producto.Id,
+                                    Url = imagenDto.Url,
+                                    Descripcion = imagenDto.Descripcion,
+                                };
+                                await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
+                            }
+                            else
+                            {
+                                logs.Advertencia($"Omitiendo una url no válida la imagen: {imagenDto.Url}");
+                                continue;
+                            }
+                        }
+                        await MdTecnologiaContext.SaveChangesAsync();
+                    }
+                    catch (Exception excep)
+                    {
+                        logs.Excepciones(excep, "ha ocurrido un error al guardar las imagenes del producto");
+                        await transaction.RollbackToSavepointAsync("proveedores");
+                    }
                 }
+
+                await transaction.CommitAsync();
+
+                await MdTecnologiaContext.Entry(producto).ReloadAsync();
                 return Ok(new
                 {
                     producto = new ProductosDto()
@@ -308,8 +313,13 @@ namespace MD_Tech.Controllers
                         Nombre = producto.Nombre,
                         Marca = producto.Marca,
                         Descripcion = producto.Descripcion,
-                        Imagen1 = producto.ImagenFile != null ? Url.Action(nameof(GetImage), "Productos", new { id = producto.Id }, Request.Scheme) : null,
-                        Imagen2 = producto.ImagenUrl,
+                        Imagenes = producto.ImagenesProductos.Select(img => new ImagenesProductoDto()
+                        {
+                            Id = img.Id,
+                            Url = img.Url,
+                            Descripcion = img.Descripcion,
+                            Producto = img.Producto,
+                        }).ToList(),
                         Proveedores = producto.ProductosProveedores.Select(pp => new ProductoProveedorDto()
                         {
                             Producto = pp.Producto,
@@ -340,24 +350,6 @@ namespace MD_Tech.Controllers
             {
                 return BadRequest(new { Id = "id proporcionado en uso" });
             }
-            // No se permiten 2 imagenes tipo link (por ahora)
-            if (!string.IsNullOrWhiteSpace(productoDto.Imagen1) && !string.IsNullOrWhiteSpace(productoDto.Imagen2))
-            {
-                return BadRequest(new
-                {
-                    imagenes = "Solo se soporta una imagen: Imagen1 como archivo o Imagen2 como URL. Deje uno de los campos como null. Para subir como archivo posterior a crear utilizar " +
-                    Url.Action(nameof(UploadImage), "Productos", new { id = productoDto.Id }, Request.Scheme)
-                });
-            }
-            // No permite imagen1 deben usar otro endpoint
-            if (!string.IsNullOrWhiteSpace(productoDto.Imagen1))
-            {
-                return BadRequest(new
-                {
-                    imagen1 = "para imagenes como archivo debe hacerlo posterior a la creación en " +
-                    Url.Action(nameof(UploadImage), "Productos", new { id = productoDto.Id }, Request.Scheme)
-                });
-            }
             // Campos obligatorios tipo string
             if (string.IsNullOrWhiteSpace(productoDto.Nombre) || string.IsNullOrWhiteSpace(productoDto.Marca))
             {
@@ -367,14 +359,6 @@ namespace MD_Tech.Controllers
             if (productoDto.Descripcion != null && string.IsNullOrWhiteSpace(productoDto.Descripcion))
             {
                 return BadRequest(new { descripcion = "la descripción no puede ser espacios en blanco" });
-            }
-            // Permite null a la imagenUrl, pero si fue dado se valida la url
-            if (!string.IsNullOrWhiteSpace(productoDto.Imagen2))
-            {
-                if (!IsValidUrl(productoDto.Imagen2))
-                {
-                    return BadRequest(new { imagen2 = "Imagen2 debe ser una URL válida o null si no se usa." });
-                }
             }
             if (productoDto.Categoria != null && await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
             {
@@ -390,14 +374,13 @@ namespace MD_Tech.Controllers
                     Marca = productoDto.Marca,
                     Categoria = productoDto.Categoria,
                     Descripcion = productoDto.Descripcion,
-                    ImagenUrl = productoDto.Imagen2,
                 };
 
                 await MdTecnologiaContext.Productos.AddAsync(productos);
                 await MdTecnologiaContext.SaveChangesAsync();
-                transaction.CreateSavepoint("producto");
+                await transaction.CreateSavepointAsync("producto");
 
-                if (productoDto.Proveedores != null && productoDto.Proveedores.Count != 0)
+                if (productoDto.Proveedores != null && productoDto.Proveedores.Count > 0)
                 {
                     try
                     {
@@ -429,17 +412,63 @@ namespace MD_Tech.Controllers
                         await transaction.RollbackToSavepointAsync("producto");
                     }
                 }
+
+                await transaction.CreateSavepointAsync("proveedores");
+
+                if (productoDto.Imagenes != null && productoDto.Imagenes.Count > 0)
+                {
+                    try
+                    {
+                        logs.Informacion("Relaciones de imagenes producto encontradas. Procesando...");
+                        foreach (var imagenDto in productoDto.Imagenes)
+                        {
+                            if (!string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url))
+                            {
+                                if (imagenDto.Descripcion != null && string.IsNullOrEmpty(imagenDto.Descripcion))
+                                {
+                                    logs.Advertencia($"Colocando null a descripción inválida, url: {imagenDto.Url}");
+                                    imagenDto.Descripcion = null;
+                                }
+                                var imagenProducto = new ImagenesProducto()
+                                {
+                                    Producto = productos.Id,
+                                    Url = imagenDto.Url,
+                                    Descripcion = imagenDto.Descripcion,
+                                };
+                                await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
+                            }
+                            else
+                            {
+                                logs.Advertencia($"Omitiendo una url no válida la imagen: {imagenDto.Url}");
+                                continue;
+                            }
+                        }
+                        await MdTecnologiaContext.SaveChangesAsync();
+                    }
+                    catch (Exception excep)
+                    {
+                        logs.Excepciones(excep, "ha ocurrido un error al guardar las imagenes del producto");
+                        await transaction.RollbackToSavepointAsync("proveedores");
+                    }
+                }
+
                 await transaction.CommitAsync();
+                await MdTecnologiaContext.Entry(productos).ReloadAsync();
                 return Created(Url.Action(nameof(GetProductos), "Productos", new { id = productos.Id }, Request.Scheme), new
                 {
                     producto = new ProductosDto()
                     {
-                        Id = productoDto.Id,
+                        Id = productos.Id,
                         Nombre = productos.Nombre,
                         Marca = productos.Marca,
                         Descripcion = productos.Descripcion,
-                        Imagen1 = productos.ImagenFile != null ? Url.Action(nameof(GetImage), "Productos", new { id = productos.Id }, Request.Scheme) : null,
-                        Imagen2 = productos.ImagenUrl,
+                        Imagenes = productos.ImagenesProductos.Select(img => new ImagenesProductoDto()
+                        {
+                            Id = img.Id,
+                            Url = img.Url,
+                            Descripcion = img.Descripcion,
+                            Producto = img.Producto,
+                        }).ToList(),
                         Proveedores = productos.ProductosProveedores.Select(pp => new ProductoProveedorDto()
                         {
                             Producto = pp.Producto,
@@ -478,12 +507,12 @@ namespace MD_Tech.Controllers
 
             if (producto != null)
             {
-                using var memoryStream = new MemoryStream();
-                await image.CopyToAsync(memoryStream);
-                var imageData = memoryStream.ToArray();
-
-                producto.ImagenFile = imageData;
-                await MdTecnologiaContext.SaveChangesAsync();
+                //using var memoryStream = new MemoryStream();
+                //await image.CopyToAsync(memoryStream);
+                //var imageData = memoryStream.ToArray();
+                // TODO cambiar a guardar en cloud y referencia en la base de datos
+                //producto.ImagenesProductos.Add(new ImagenesProducto() { });
+                //await MdTecnologiaContext.SaveChangesAsync();
                 return NoContent();
             }
             else

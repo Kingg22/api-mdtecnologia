@@ -17,7 +17,11 @@ builder.WebHost.UseNLog();
 
 builder.WebHost.UseKestrel(options => options.ListenAnyIP(5294));
 
-builder.Services.AddDbContext<MdtecnologiaContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), o => o.UseNodaTime()));
+builder.Services.AddDbContext<MdtecnologiaContext>(options => options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection"), o =>
+{
+    o.UseNodaTime();
+    o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
+}));
 
 builder.Services.AddCors(options => options.AddPolicy("AllowAllOrigins", builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 builder.Services.AddAuthorization();

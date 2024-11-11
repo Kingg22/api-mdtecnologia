@@ -21,6 +21,8 @@ public partial class MdtecnologiaContext : DbContext
 
     public virtual DbSet<HistorialProducto> HistorialProductos { get; set; }
 
+    public virtual DbSet<ImagenesProducto> ImagenesProductos { get; set; }
+
     public virtual DbSet<OrdenesCompraProveedor> OrdenesCompraProveedors { get; set; }
 
     public virtual DbSet<Productos> Productos { get; set; }
@@ -280,8 +282,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnName("id");
             entity.Property(e => e.Categoria).HasColumnName("categoria");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
-            entity.Property(e => e.ImagenFile).HasColumnName("imagen_file");
-            entity.Property(e => e.ImagenUrl).HasColumnName("imagen_url");
             entity.Property(e => e.Marca).HasColumnName("marca");
             entity.Property(e => e.Nombre).HasColumnName("nombre");
 
