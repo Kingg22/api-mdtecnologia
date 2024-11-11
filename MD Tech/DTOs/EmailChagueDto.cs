@@ -9,7 +9,7 @@ namespace MD_Tech.DTOs
 
         [Required]
         [StringLength(255, MinimumLength = 1)]
-        public required string correo { get; set; }
+        public required string Correo { get; set; }
 
     }
 

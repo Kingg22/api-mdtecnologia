@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using NodaTime;
+using System.ComponentModel.DataAnnotations;
 
 namespace MD_Tech.DTOs
 {
@@ -18,8 +19,8 @@ namespace MD_Tech.DTOs
 
         public RolesEnum Rol { get; set; }
 
-        public DateTime? CreatedAt { get; set; }
+        public LocalDateTime? CreatedAt { get; set; }
 
-        public DateTime? UpdatedAt { get; set; }
+        public LocalDateTime? UpdatedAt { get; set; }
     }
 }

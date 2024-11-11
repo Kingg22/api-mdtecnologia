@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using NodaTime;
+using System.ComponentModel.DataAnnotations;
 
 namespace MD_Tech.DTOs
 {
@@ -21,6 +22,6 @@ namespace MD_Tech.DTOs
 
         public int? Stock { get; set; }
 
-        public DateOnly? FechaActualizado { get; set; }
+        public LocalDate? FechaActualizado { get; set; }
     }
 }

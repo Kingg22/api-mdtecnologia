@@ -1,4 +1,6 @@
-﻿namespace MD_Tech.Models;
+﻿using NodaTime;
+
+namespace MD_Tech.Models;
 
 public partial class Trabajadores
 {
@@ -22,9 +24,9 @@ public partial class Trabajadores
 
     public decimal? Salario { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public LocalDateTime CreatedAt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public LocalDateTime? UpdatedAt { get; set; }
 
     public virtual Usuarios? UsuarioNavigation { get; set; }
 }

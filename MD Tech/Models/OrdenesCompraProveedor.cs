@@ -1,4 +1,6 @@
-﻿namespace MD_Tech.Models;
+﻿using NodaTime;
+
+namespace MD_Tech.Models;
 
 public partial class OrdenesCompraProveedor
 {
@@ -8,7 +10,7 @@ public partial class OrdenesCompraProveedor
 
     public string IdOrden { get; set; } = null!;
 
-    public DateOnly? FechaEstimadaEntrega { get; set; }
+    public LocalDate? FechaEstimadaEntrega { get; set; }
 
     public string Estado { get; set; } = null!;
 

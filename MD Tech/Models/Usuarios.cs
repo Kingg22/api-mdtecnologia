@@ -1,4 +1,6 @@
-﻿namespace MD_Tech.Models;
+﻿using NodaTime;
+
+namespace MD_Tech.Models;
 
 public partial class Usuarios
 {
@@ -12,9 +14,9 @@ public partial class Usuarios
 
     public string Rol { get; set; } = null!;
 
-    public DateTime CreatedAt { get; set; }
+    public LocalDateTime CreatedAt { get; set; }
 
-    public DateTime? UpdatedAt { get; set; }
+    public LocalDateTime? UpdatedAt { get; set; }
 
     public virtual Clientes? Cliente { get; set; }
 
