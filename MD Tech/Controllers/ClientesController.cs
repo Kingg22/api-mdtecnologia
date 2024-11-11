@@ -212,7 +212,7 @@ namespace MD_Tech.Controllers
 
             try
             {
-                if (string.IsNullOrWhiteSpace(newCorreo.correo) || !newCorreo.correo.Contains("@"))
+                if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !newCorreo.Correo.Contains("@"))
                 {
                     logsApi.Informacion("Correo rechazado por no contener @");
                     return BadRequest(new { message = "Ingrese un correo válido" });
@@ -224,18 +224,18 @@ namespace MD_Tech.Controllers
                     logsApi.Informacion($"Cliente con ID {newCorreo.Id} no encontrado para actualizar su correo");
                     return NotFound();
                 }
-                if (cliente.Correo == newCorreo.correo) {
+                if (cliente.Correo == newCorreo.Correo) {
                     logsApi.Informacion("Correo rechazado por ser igual al actual");
                     return BadRequest(new { correo = "El correo proporcionado es igual al correo actual" });
                 }
-                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.correo);
+                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.Correo);
                 if (verificorreo)
                 {
                     logsApi.Informacion("El correo ya esta registrado");
                     return BadRequest(new { correo = "Correo ya en Uso" });
                 }
 
-                cliente.Correo = newCorreo.correo;
+                cliente.Correo = newCorreo.Correo;
                 await mdtecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
 

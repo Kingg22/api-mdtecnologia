@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using MD_Tech.DTOs;
 using Swashbuckle.AspNetCore.Annotations;
 using System.Reflection;
+using NodaTime;
 
 namespace MD_Tech.Controllers
 {
@@ -139,7 +140,7 @@ namespace MD_Tech.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<ProductosDto>> GetProductos(Guid id)
         {
-            var p = await MdTecnologiaContext.Productos.Include(producto => producto.ProductosProveedores).FirstOrDefaultAsync();
+            var p = await MdTecnologiaContext.Productos.Include(producto => producto.ProductosProveedores).OrderBy(p => p.Id).FirstOrDefaultAsync();
             return p == null ? NotFound() : Ok(new
             {
                 producto = new ProductosDto()
@@ -261,7 +262,7 @@ namespace MD_Tech.Controllers
                                 relacion.Precio = proveedorDto.Precio;
                                 relacion.Impuesto = proveedorDto.Impuesto;
                                 relacion.Total = proveedorDto.Precio + proveedorDto.Impuesto;
-                                relacion.FechaActualizado = proveedorDto.FechaActualizado != null ? (DateOnly)proveedorDto.FechaActualizado : DateOnly.FromDateTime(DateTime.UtcNow);
+                                relacion.FechaActualizado = proveedorDto.FechaActualizado != null ? (LocalDate)proveedorDto.FechaActualizado : LocalDate.FromDateTime(DateTime.UtcNow);
                                 relacion.Stock = proveedorDto.Stock;
 
                                 listaProveedores.Add(relacion);
@@ -275,7 +276,7 @@ namespace MD_Tech.Controllers
                                     Precio = proveedorDto.Precio,
                                     Impuesto = proveedorDto.Impuesto,
                                     Total = proveedorDto.Precio * proveedorDto.Impuesto,
-                                    FechaActualizado = proveedorDto.FechaActualizado != null ? (DateOnly)proveedorDto.FechaActualizado : DateOnly.FromDateTime(DateTime.UtcNow),
+                                    FechaActualizado = proveedorDto.FechaActualizado != null ? (LocalDate)proveedorDto.FechaActualizado : LocalDate.FromDateTime(DateTime.UtcNow),
                                     Stock = proveedorDto.Stock
                                 };
                                 await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
@@ -415,7 +416,7 @@ namespace MD_Tech.Controllers
                                 Precio = proveedorDto.Precio,
                                 Impuesto = proveedorDto.Impuesto,
                                 Total = proveedorDto.Precio + proveedorDto.Impuesto,
-                                FechaActualizado = proveedorDto.FechaActualizado != null ? (DateOnly)proveedorDto.FechaActualizado : DateOnly.FromDateTime(DateTime.UtcNow),
+                                FechaActualizado = proveedorDto.FechaActualizado != null ? (LocalDate)proveedorDto.FechaActualizado : LocalDate.FromDateTime(DateTime.UtcNow),
                                 Stock = proveedorDto.Stock
                             };
                             await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);

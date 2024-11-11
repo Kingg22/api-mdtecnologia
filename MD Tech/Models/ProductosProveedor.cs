@@ -1,4 +1,6 @@
-﻿namespace MD_Tech.Models;
+﻿using NodaTime;
+
+namespace MD_Tech.Models;
 
 public partial class ProductosProveedor
 {
@@ -14,7 +16,7 @@ public partial class ProductosProveedor
 
     public int? Stock { get; set; }
 
-    public DateOnly FechaActualizado { get; set; }
+    public LocalDate FechaActualizado { get; set; }
 
     public virtual Productos ProductoNavigation { get; set; } = null!;
 

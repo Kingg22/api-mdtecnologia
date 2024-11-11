@@ -1,4 +1,6 @@
-﻿namespace MD_Tech.Models;
+﻿using NodaTime;
+
+namespace MD_Tech.Models;
 
 public partial class Direcciones
 {
@@ -8,7 +10,7 @@ public partial class Direcciones
 
     public int Provincia { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public LocalDateTime CreatedAt { get; set; }
 
     public virtual ICollection<Proveedores> Proveedores { get; set; } = [];
 

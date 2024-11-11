@@ -1,4 +1,6 @@
-﻿namespace MD_Tech.Models;
+﻿using NodaTime;
+
+namespace MD_Tech.Models;
 
 public partial class DireccionesClientes
 {
@@ -6,7 +8,7 @@ public partial class DireccionesClientes
 
     public Guid Direccion { get; set; }
 
-    public DateTime CreatedAt { get; set; }
+    public LocalDateTime CreatedAt { get; set; }
 
     public virtual Clientes ClienteNavigation { get; set; } = null!;
 

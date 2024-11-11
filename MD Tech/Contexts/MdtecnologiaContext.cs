@@ -77,7 +77,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnName("correo");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.Nombre)
                 .HasMaxLength(100)
@@ -86,7 +85,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasMaxLength(15)
                 .HasColumnName("telefono");
             entity.Property(e => e.UpdatedAt)
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
             entity.Property(e => e.Usuario).HasColumnName("usuario");
 
@@ -166,7 +164,6 @@ public partial class MdtecnologiaContext : DbContext
             entity.Property(e => e.Cliente).HasColumnName("cliente");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.Direccion).HasColumnName("direccion");
 
@@ -190,7 +187,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.Descripcion).HasColumnName("descripcion");
             entity.Property(e => e.Provincia)
@@ -211,7 +207,6 @@ public partial class MdtecnologiaContext : DbContext
 
             entity.Property(e => e.FechaCambio)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("fecha_cambio");
             entity.Property(e => e.PrecioBaseAnterior)
                 .HasColumnType("money")
@@ -369,7 +364,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnName("correo");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.Estado)
                 .HasDefaultValue(true)
@@ -385,7 +379,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasMaxLength(15)
                 .HasColumnName("telefono");
             entity.Property(e => e.UpdatedAt)
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
             entity.Property(e => e.Usuario).HasColumnName("usuario");
 
@@ -408,7 +401,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnName("id");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("created_at");
             entity.Property(e => e.Disabled)
                 .HasDefaultValue(false)
@@ -420,7 +412,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasMaxLength(50)
                 .HasColumnName("rol");
             entity.Property(e => e.UpdatedAt)
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("updated_at");
             entity.Property(e => e.Username)
                 .HasMaxLength(50)
@@ -448,7 +439,6 @@ public partial class MdtecnologiaContext : DbContext
                 .HasColumnName("estado");
             entity.Property(e => e.Fecha)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
-                .HasColumnType("timestamp without time zone")
                 .HasColumnName("fecha");
             entity.Property(e => e.Impuesto)
                 .HasColumnType("money")

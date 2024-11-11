@@ -1,10 +1,12 @@
-﻿namespace MD_Tech.Models;
+﻿using NodaTime;
+
+namespace MD_Tech.Models;
 
 public partial class Ventas
 {
     public Guid Id { get; set; }
 
-    public DateTime Fecha { get; set; }
+    public LocalDateTime Fecha { get; set; }
 
     public string Estado { get; set; } = null!;
 

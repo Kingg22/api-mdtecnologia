@@ -1,4 +1,6 @@
-﻿namespace MD_Tech.Models;
+﻿using NodaTime;
+
+namespace MD_Tech.Models;
 
 public partial class HistorialProducto
 {
@@ -8,7 +10,7 @@ public partial class HistorialProducto
 
     public decimal PrecioTotalAnterior { get; set; }
 
-    public DateTime FechaCambio { get; set; }
+    public LocalDateTime FechaCambio { get; set; }
 
     public virtual Productos? ProductoNavigation { get; set; }
 }
