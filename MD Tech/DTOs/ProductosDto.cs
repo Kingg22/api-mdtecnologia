@@ -16,12 +16,8 @@ namespace MD_Tech.DTOs
 
         public Guid? Categoria { get; set; }
 
-        // Representa una imagen guardada como archivo y con link interno de la api para obtenerla
-        public string? Imagen1 { get; set; }
+        public ICollection<ProductoProveedorDto>? Proveedores { get; set; }
 
-        // Representa la imagen de internet como link
-        public string? Imagen2 { get; set; }
-
-        public ICollection<ProductoProveedorDto>? Proveedores { get; set; } = [];
+        public ICollection<ImagenesProductoDto>? Imagenes { get; set; }
     }
 }

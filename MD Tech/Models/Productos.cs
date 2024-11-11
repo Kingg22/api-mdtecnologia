@@ -12,10 +12,6 @@ public partial class Productos
 
     public Guid? Categoria { get; set; }
 
-    public byte[]? ImagenFile { get; set; }
-
-    public string? ImagenUrl { get; set; }
-
     public virtual Categorias? CategoriaNavigation { get; set; }
 
     public virtual ICollection<DetallesVentas> DetallesVenta { get; set; } = [];
