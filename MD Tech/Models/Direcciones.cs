@@ -12,6 +12,10 @@ public partial class Direcciones
 
     public LocalDateTime CreatedAt { get; set; }
 
+    public virtual ICollection<DireccionesClientes> DireccionesClientes { get; set; } = [];
+
+    public virtual ICollection<Clientes> Clientes { get; set; } = [];
+
     public virtual ICollection<Proveedores> Proveedores { get; set; } = [];
 
     public virtual Provincia ProvinciaNavigation { get; set; } = null!;

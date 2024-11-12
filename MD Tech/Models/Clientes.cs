@@ -22,5 +22,9 @@ public partial class Clientes
 
     public virtual Usuarios? UsuarioNavigation { get; set; }
 
+    public virtual ICollection<DireccionesClientes> DireccionesClientes { get; set; } = [];
+
+    public virtual ICollection<Direcciones> Direcciones { get; set; } = [];
+
     public virtual ICollection<Ventas> Ventas { get; set; } = [];
 }

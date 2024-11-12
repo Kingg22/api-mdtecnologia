@@ -17,8 +17,10 @@ namespace MD_Tech.DTOs
         public required string Correo { get; set; }
 
         public string? Telefono { get; set; }
+
         [Required]
         public Guid? IdUsuario { get; set; }
 
+        public ICollection<DireccionDto> Direcciones { get; set; } = [];
     }
 }

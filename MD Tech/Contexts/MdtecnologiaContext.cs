@@ -100,6 +100,9 @@ public partial class MdtecnologiaContext : DbContext
                 .HasForeignKey<Clientes>(c => c.Usuario)
                 .OnDelete(DeleteBehavior.SetNull)
                 .HasConstraintName("clientes_usuario_fkey");
+
+            entity.HasMany(d => d.Direcciones).WithMany(p => p.Clientes)
+                    .UsingEntity<DireccionesClientes>();
         });
 
         modelBuilder.Entity<ContactoProveedor>(entity =>
@@ -165,21 +168,21 @@ public partial class MdtecnologiaContext : DbContext
 
         modelBuilder.Entity<DireccionesClientes>(entity =>
         {
-            entity
-                .HasNoKey()
-                .ToTable("direccion_cliente");
+            entity.HasKey(e => new { e.Cliente, e.Direccion }).HasName("direccion_cliente_pkey");
+
+            entity.ToTable("direccion_cliente");
 
             entity.Property(e => e.Cliente).HasColumnName("cliente");
+            entity.Property(e => e.Direccion).HasColumnName("direccion");
             entity.Property(e => e.CreatedAt)
                 .HasDefaultValueSql("CURRENT_TIMESTAMP")
                 .HasColumnName("created_at");
-            entity.Property(e => e.Direccion).HasColumnName("direccion");
 
-            entity.HasOne(d => d.ClienteNavigation).WithMany()
+            entity.HasOne(d => d.ClienteNavigation).WithMany(p => p.DireccionesClientes)
                 .HasForeignKey(d => d.Cliente)
                 .HasConstraintName("direccion_cliente_cliente_fkey");
 
-            entity.HasOne(d => d.DireccionNavigation).WithMany()
+            entity.HasOne(d => d.DireccionNavigation).WithMany(p => p.DireccionesClientes)
                 .HasForeignKey(d => d.Direccion)
                 .HasConstraintName("direccion_cliente_direccion_fkey");
         });
@@ -205,6 +208,9 @@ public partial class MdtecnologiaContext : DbContext
                 .HasForeignKey(d => d.Provincia)
                 .OnDelete(DeleteBehavior.ClientSetNull)
                 .HasConstraintName("direcciones_provincia_fkey");
+
+            entity.HasMany(d => d.Clientes).WithMany(p => p.Direcciones)
+                .UsingEntity<DireccionesClientes>();
         });
 
         modelBuilder.Entity<HistorialProducto>(entity =>
