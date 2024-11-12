@@ -1,6 +1,8 @@
 using MD_Tech.Contexts;
+using MD_Tech.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.IdentityModel.Tokens;
 using NLog.Web;
 using NodaTime;
@@ -40,10 +42,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
     };
 });
 
+builder.Services.TryAddTransient<IStorageApi, OciStorageApi>();
+builder.Configuration.AddJsonFile("appsettings.json", false, true);
+
 builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb));
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen().ConfigureHttpJsonOptions(o => o.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb));
 
 var app = builder.Build();
 app.UseCors("AllowAllOrigins");
