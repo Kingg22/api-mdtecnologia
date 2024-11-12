@@ -364,3 +364,5 @@ FodyWeavers.xsd
 
 # Añadido por Kingg22
 *.pem
+*/oci
+*/drive
