@@ -23,20 +23,31 @@ namespace MD_Tech.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult<List<Clientes>>> getClientes()
+        public async Task<ActionResult<List<Clientes>>> GetClientes()
         {
-            return Ok(await mdtecnologiaContext.Clientes
+            return Ok(new
+            {
+                clientes = await mdtecnologiaContext.Clientes
                 .AsNoTracking()
+                .Include(c => c.Direcciones)
                 .Select(c => new ClienteDto()
                 {
                     Id = c.Id,
-                    Nombre=c.Nombre,  
-                    Apellido=c.Apellido,
-                    Correo=c.Correo, 
-                    Telefono=c.Telefono,
-                    IdUsuario= c.Usuario
+                    Nombre = c.Nombre,
+                    Apellido = c.Apellido,
+                    Correo = c.Correo,
+                    Telefono = c.Telefono,
+                    IdUsuario = c.Usuario,
+                    Direcciones = c.Direcciones.Select(d => new DireccionDto()
+                    {
+                        Id = d.Id,
+                        Descripcion = d.Descripcion,
+                        CreatedAt = d.CreatedAt,
+                        Provincia = d.Provincia,
+                    }).ToList()
                 })
-                .ToListAsync());
+                .ToListAsync()
+            });
         }
         
         [HttpPost]
@@ -46,16 +57,10 @@ namespace MD_Tech.Controllers
             try
             {
                 var cliente = await CrearCliente(newCliente);
-                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCliente.Correo);
-                if (verificorreo)
-                {
-                    logsApi.Informacion("El correo ya esta registrado");
-                    return BadRequest(new { correo = "Correo ya en Uso" });
-                }
                 if (cliente != null)
                 {
                     logsApi.Informacion("se ha creado un nuevo cliente");
-                    return Created(Url.Action(nameof(GetCliente), "Cliente", new { id = cliente.Id }, Request.Scheme), new
+                    return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = cliente.Id }, Request.Scheme), new
                     {
                         cliente = new ClienteDto()
                         {
@@ -71,8 +76,7 @@ namespace MD_Tech.Controllers
                 else
                 {
                     logsApi.Depuracion("Error al crear el Usuario");
-                    return BadRequest( "revise los campos, pueden ya estar registrados");
-
+                    return BadRequest(new { dto = "revise los campos, pueden ya estar registrados" });
                 }
             }
             catch (Exception ex)
@@ -85,7 +89,7 @@ namespace MD_Tech.Controllers
 
         [HttpGet("{id}")]
         [Authorize]
-        public async Task<ActionResult> GetCliente(Guid id)
+        public async Task<ActionResult> GetClientes(Guid id)
         {
             var resultado = await mdtecnologiaContext.Clientes.FindAsync(id);
             return resultado != null ? Ok(new { cliente = new ClienteDto() 
@@ -122,12 +126,6 @@ namespace MD_Tech.Controllers
                     logsApi.Informacion("registro rechazado ya existe ese username");
                     return BadRequest(new { username = "nombre de usuario en uso, intente nuevamente" });
                 }
-                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == clienteUsuario.Correo);
-                if (verificorreo)
-                {
-                    logsApi.Informacion("El correo ya esta registrado");
-                    return BadRequest(new { correo = "Correo ya en Uso" });
-                }
                 var usuario = new Usuarios
                 {
                     Id = clienteUsuario.UsuarioID != null ? (Guid)clienteUsuario.UsuarioID : Guid.NewGuid(),
@@ -157,7 +155,7 @@ namespace MD_Tech.Controllers
                 }
                 await transaction.CommitAsync();
 
-                return Created(Url.Action(nameof(GetCliente), "Cliente", new { id = crearC.Id }, Request.Scheme),
+                return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = crearC.Id }, Request.Scheme),
                     new
                     {
                         cliente = new ClienteDto
@@ -178,8 +176,9 @@ namespace MD_Tech.Controllers
                 return Problem();
             }
         }
+
         [SwaggerIgnore]
-        private async Task<Clientes> CrearCliente(ClienteDto newCliente)
+        private async Task<Clientes?> CrearCliente(ClienteDto newCliente)
         {
             var usuario = await mdtecnologiaContext.Usuarios.FindAsync(newCliente.IdUsuario);
             if (usuario == null ||
@@ -206,12 +205,18 @@ namespace MD_Tech.Controllers
 
         [HttpPatch("correo/{id}")]
         [Authorize]
-        public async Task<ActionResult> CambiarCorreo([FromBody] EmailChagueDto newCorreo)
+        public async Task<ActionResult> CambiarCorreo(Guid id, [FromBody] EmailChagueDto newCorreo)
         {
             using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
 
             try
             {
+                if (id != newCorreo.Id)
+                {
+                    logsApi.Informacion($"El id de la ruta {id} no coincide con el body {newCorreo.Id}");
+                    return BadRequest(new { Id = "los id no coinciden" });
+                } 
+
                 if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !newCorreo.Correo.Contains("@"))
                 {
                     logsApi.Informacion("Correo rechazado por no contener @");
