@@ -26,7 +26,7 @@ namespace MD_Tech.Controllers
                 return BadRequest();
             }
             using var fileStream = file.OpenReadStream();
-            var result = await storageApi.PutObjectAsync(fileStream, file.FileName, file.ContentType, ["products-images"]);
+            var result = await storageApi.PutObjectAsync(fileStream, file.FileName, file.ContentType);
             if (result is null)
             {
                 return Problem();
@@ -46,6 +46,10 @@ namespace MD_Tech.Controllers
             {
                 logger.Informacion("Se ha obtenido de OCI");
                 return File(getObject.InputStream, getObject.ContentType);
+            } else if (response is Imagenes imagen)
+            {
+                logger.Informacion("Se ha obtenido de la base de datos");
+                return File(imagen.ImagenData, imagen.Type);
             }
             return Problem("implementación no soportada");
         }
