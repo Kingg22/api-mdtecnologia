@@ -2,7 +2,7 @@
 {
     public interface IStorageApi
     {
-        Task<Uri?> PutObjectAsync(Stream objectToSave, string objectName, string type, string[]? folders);
+        Task<Uri?> PutObjectAsync(Stream objectToSave, string objectName, string type);
 
         Task<bool> DeleteObjectAsync(string objectName);
 

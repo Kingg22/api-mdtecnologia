@@ -28,6 +28,11 @@ namespace MD_Tech.Storage
 
         public async Task<object?> GetObjectAsync(string objectName)
         {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                logs.Advertencia("Se ha rechazado búsqueda de objeto en OCI por nombre inválido");
+                return null;
+            }
             using var client = new ObjectStorageClient(Provider, new());
             var getObjectRequest = new GetObjectRequest()
             {
@@ -64,7 +69,7 @@ namespace MD_Tech.Storage
             {
                 var response = await client.PutObject(putObjectRequest);
                 logs.Informacion($"Subida de objecto a OCI exitoso ETAG: {response.ETag}");
-                return client.GetEndpoint();
+                return new Uri(client.GetEndpoint(), $"/n/{Namespace}/b/{BucketName}/o/{objectName}");
             }
             catch (Exception ex)
             {
@@ -75,6 +80,11 @@ namespace MD_Tech.Storage
 
         public async Task<bool> DeleteObjectAsync(string objectName)
         {
+            if (string.IsNullOrWhiteSpace(objectName))
+            {
+                logs.Advertencia("Se ha rechazado eliminación de objeto en OCI por nombre inválido");
+                return false;
+            }
             using var client = new ObjectStorageClient(Provider, new ());
             var deleteObjectRequest = new DeleteObjectRequest()
             {
