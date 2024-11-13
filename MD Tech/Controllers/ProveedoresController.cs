@@ -19,11 +19,13 @@ namespace MD_Tech.Controllers
         public ProveedoresController(MdtecnologiaContext mdtecnologiaContext)
         {
             this.mdtecnologiaContext = mdtecnologiaContext;
-            logApi = new LogsApi(typeof(ProveedoresController)); ;
+            logApi = new LogsApi(GetType());
         }
 
         [HttpGet]
         [Authorize]
+        [SwaggerOperation(Summary = "Obtiene todos los proveedores", Description = "Devuelve una lista de proveedores")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(List<ProveedoresDto>))]
         public async Task<ActionResult<List<ProveedoresDto>>> GetProveedor()
         {
             return Ok(new
@@ -45,6 +47,9 @@ namespace MD_Tech.Controllers
 
         [HttpGet("{id}")]
         [Authorize]
+        [SwaggerOperation(Summary = "Obtiene un proveedor por ID", Description = "Devuelve el detalle del proveedor")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(ProveedoresDto))]
+        [SwaggerResponse(404, "Proveedor no encontrado")]
         public async Task<ActionResult<ProveedoresDto>> GetProveedor(Guid id)
         {
             var provedor = await mdtecnologiaContext.Proveedores.FindAsync(id);
@@ -63,6 +68,10 @@ namespace MD_Tech.Controllers
 
         [HttpPost]
         [Authorize]
+        [SwaggerOperation(Summary = "Crea un proveedor", Description = "Agrega un nuevo proveedor a la base de datos")]
+        [SwaggerResponse(201, "Proveedor creado", typeof(ProveedoresDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult<ProveedoresDto>> AgregarProvedor([FromBody] ProveedoresDto proveedorDto)
         {
             try
@@ -129,6 +138,10 @@ namespace MD_Tech.Controllers
 
         [HttpPost("direccion")]
         [Authorize]
+        [SwaggerOperation(Summary = "Crea un proveedor con su dirección", Description = "Agrega un nuevo proveedor a la base de datos")]
+        [SwaggerResponse(201, "Proveedor creado", typeof(ProveedoresDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult<ProveedoresDto>> CrearProvedorDireccion([FromBody] ProveedoresDto proveedorDto)
         {
             var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();

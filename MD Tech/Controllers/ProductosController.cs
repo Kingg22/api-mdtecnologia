@@ -20,14 +20,19 @@ namespace MD_Tech.Controllers
         public ProductosController(MdtecnologiaContext MdTecnologiaContext)
         {
             this.MdTecnologiaContext = MdTecnologiaContext;
-            logs = new LogsApi(typeof(ProductosController));
+            logs = new LogsApi(GetType());
         }
 
         [HttpGet]
+        [SwaggerOperation(Summary = "Obtiene todos los productos", Description = "Devuelve una lista de productos")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(List<ProductosDto>))]
         public async Task<ActionResult<List<ProductosDto>>> GetProductos([FromQuery] ProductosRequestDto paginacionDto)
         {
+            if (paginacionDto.Page < 0 || paginacionDto.Limit < 0)
+            {
+                return BadRequest(new { paginacion = "las números de paginación o límites no pueden ser negativos" });
+            }
             var query = MdTecnologiaContext.Productos.AsQueryable();
-            // TODO optimizar búsquedas con text search
             if (!string.IsNullOrWhiteSpace(paginacionDto.Nombre))
             {
                 query = query.Where(p => EF.Functions.ILike(p.Nombre, $"%{paginacionDto.Nombre}%"));
@@ -46,8 +51,7 @@ namespace MD_Tech.Controllers
                 var orderByProperty = orderBy[0];
                 var orderByDirection = orderBy[1].Equals("DESC", StringComparison.OrdinalIgnoreCase);
 
-                var clienteType = typeof(Productos);
-                var property = clienteType.GetProperty(orderByProperty, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                var property = typeof(Productos).GetProperty(orderByProperty, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
                 if (property != null)
                 {
                     query = orderByDirection
@@ -103,7 +107,7 @@ namespace MD_Tech.Controllers
                     },
                     Request.Scheme
                 ) : null;
-
+            logs.Depuracion(query.ToQueryString());
             return Ok(new
             {
                 count = totalProducts,
@@ -144,6 +148,9 @@ namespace MD_Tech.Controllers
         }
 
         [HttpGet("{id}")]
+        [SwaggerOperation(Summary = "Obtiene un producto por ID", Description = "Devuelve el detalle del producto")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(ProductosDto))]
+        [SwaggerResponse(404, "Producto no encontrado")]
         public async Task<ActionResult<ProductosDto>> GetProductos(Guid id)
         {
             var p = await MdTecnologiaContext.Productos
@@ -182,6 +189,11 @@ namespace MD_Tech.Controllers
 
         [HttpPut("{id}")]
         [Authorize]
+        [SwaggerOperation(Summary = "Actualiza un producto", Description = "Se actualizan todos los campos de un producto")]
+        [SwaggerResponse(200, "Producto actualizado", typeof(ProductosDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(404, "Producto no encontrado")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult<ProductosDto>> PutProductos(Guid id, [FromBody] ProductosDto productoDto)
         {
             if (id != productoDto.Id)
@@ -343,6 +355,10 @@ namespace MD_Tech.Controllers
 
         [HttpPost]
         [Authorize]
+        [SwaggerOperation(Summary = "Crea un producto", Description = "Agrega un nuevo producto a la base de datos")]
+        [SwaggerResponse(201, "Producto creado", typeof(ProductosDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult<ProductosDto>> PostProductos([FromBody] ProductosDto productoDto)
         {
             logs.Informacion($"Iniciando la creación del producto con ID {productoDto.Id} y nombre {productoDto.Nombre}");
@@ -491,6 +507,11 @@ namespace MD_Tech.Controllers
         }
 
         [HttpPost("image/{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Añade una imagen a un producto", Description = "Agrega una nueva imagen al servicio utilizado y guarda en la base de datos su referencia")]
+        [SwaggerResponse(200, "Imagen guardada")]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(404, "Producto no encontrado")]
         public async Task<ActionResult> UploadImage(Guid id, IFormFile image)
         {
             if (image == null || image.Length == 0)
@@ -507,12 +528,7 @@ namespace MD_Tech.Controllers
 
             if (producto != null)
             {
-                //using var memoryStream = new MemoryStream();
-                //await image.CopyToAsync(memoryStream);
-                //var imageData = memoryStream.ToArray();
-                // TODO cambiar a guardar en cloud y referencia en la base de datos
-                //producto.ImagenesProductos.Add(new ImagenesProducto() { });
-                //await MdTecnologiaContext.SaveChangesAsync();
+                // TODO guardar usando el servicio IStorageApi y guardar esta referencia en la base de datos
                 return NoContent();
             }
             else
@@ -523,6 +539,9 @@ namespace MD_Tech.Controllers
 
         [HttpDelete("{id}")]
         [Authorize]
+        [SwaggerOperation(Summary = "Elimina un producto", Description = "Se elimina un producto de la base de datos")]
+        [SwaggerResponse(204, "Producto eliminado")]
+        [SwaggerResponse(404, "Producto no encontrado")]
         public async Task<ActionResult> DeleteProductos(Guid id)
         {
             var productos = await MdTecnologiaContext.Productos.FindAsync(id);

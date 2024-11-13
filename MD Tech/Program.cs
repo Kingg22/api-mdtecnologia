@@ -7,6 +7,8 @@ using Microsoft.IdentityModel.Tokens;
 using NLog.Web;
 using NodaTime;
 using NodaTime.Serialization.SystemTextJson;
+using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -48,7 +50,26 @@ builder.Configuration.AddJsonFile("appsettings.json", false, true);
 builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb));
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen().ConfigureHttpJsonOptions(o => o.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb));
+builder.Services.AddSwaggerGen(c =>
+{
+    c.EnableAnnotations();
+    // Se añade la forma de autenticación en la Swagger para comodidad de hacer pruebas
+    c.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        Description = "Autenticación JWT usando el esquema 'Bearer'. Ejemplo: 'Bearer {token}'"
+    });
+    c.OperationFilter<SecurityRequirementsOperationFilter>();
+    // Configuración adicional para representar los tipos NodaTime en la documentación
+    c.MapType<Instant>(() => new OpenApiSchema { Type = "string", Format = "date-time" });
+    c.MapType<LocalDate>(() => new OpenApiSchema { Type = "string", Format = "date" });
+    c.MapType<LocalTime>(() => new OpenApiSchema { Type = "string", Format = "time" });
+    c.MapType<LocalDateTime>(() => new OpenApiSchema { Type = "string", Format = "date-time" });
+}).ConfigureHttpJsonOptions(o => o.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb));
 
 var app = builder.Build();
 app.UseCors("AllowAllOrigins");

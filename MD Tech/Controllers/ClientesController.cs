@@ -18,11 +18,13 @@ namespace MD_Tech.Controllers
         public ClientesController(MdtecnologiaContext mdtecnologiaContext)
         {
             this.mdtecnologiaContext = mdtecnologiaContext;
-            this.logsApi = new LogsApi(typeof(ClientesController));
+            logsApi = new LogsApi(GetType());
         }
 
         [HttpGet]
         [Authorize]
+        [SwaggerOperation(Summary = "Obtiene todos los clientes", Description = "Devuelve una lista de clientes")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(List<ClienteDto>))]
         public async Task<ActionResult<List<Clientes>>> GetClientes()
         {
             return Ok(new
@@ -49,9 +51,35 @@ namespace MD_Tech.Controllers
                 .ToListAsync()
             });
         }
-        
+
+        [HttpGet("{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Obtiene un cliente por ID", Description = "Devuelve el detalle del cliente")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(ClienteDto))]
+        [SwaggerResponse(404, "Producto no encontrado")]
+        public async Task<ActionResult> GetClientes(Guid id)
+        {
+            var resultado = await mdtecnologiaContext.Clientes.FindAsync(id);
+            return resultado != null ? Ok(new
+            {
+                cliente = new ClienteDto()
+                {
+                    Id = resultado.Id,
+                    Nombre = resultado.Nombre,
+                    Apellido = resultado.Apellido,
+                    Correo = resultado.Correo,
+                    Telefono = resultado.Telefono,
+                    IdUsuario = resultado.Usuario
+                }
+            }) : NotFound();
+        }
+
         [HttpPost]
         [Authorize]
+        [SwaggerOperation(Summary = "Crea un cliente", Description = "Agrega un nuevo cliente a la base de datos")]
+        [SwaggerResponse(201, "Cliente creado", typeof(ClienteDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult> AddCliente([FromBody] ClienteDto newCliente)
         {
             try
@@ -68,7 +96,7 @@ namespace MD_Tech.Controllers
                     logsApi.Informacion("El correo ya esta registrado");
                     return BadRequest(new { correo = "Correo ya en Uso" });
                 }
-                if (!newCliente.Correo.Contains("@") || newCliente.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(newCliente.Correo))
+                if (!newCliente.Correo.Contains('@') || newCliente.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(newCliente.Correo))
                 {
                     logsApi.Errores("El correo ingresado no cuenta con formato de correo");
                     return BadRequest(new { correo = "Ingrese un correo Valido" });
@@ -103,23 +131,6 @@ namespace MD_Tech.Controllers
                 return Problem();
 
             }
-        }
-
-        [HttpGet("{id}")]
-        [Authorize]
-        public async Task<ActionResult> GetClientes(Guid id)
-        {
-            var resultado = await mdtecnologiaContext.Clientes.FindAsync(id);
-            return resultado != null ? Ok(new { cliente = new ClienteDto() 
-            {
-                Id = resultado.Id,
-                Nombre = resultado.Nombre,
-                Apellido = resultado.Apellido,
-                Correo = resultado.Correo,
-                Telefono = resultado.Telefono,
-                IdUsuario = resultado.Usuario
-            }
-            }) : NotFound();
         }
 
         [HttpPost("usuario")]
@@ -200,6 +211,85 @@ namespace MD_Tech.Controllers
             }
         }
 
+        [HttpPatch("correo/{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Cambiar correo electrónico", Description = "Se actualizan el correo del cliente en la base de datos")]
+        [SwaggerResponse(200, "Cliente actualizado", typeof(ClienteDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(404, "Cliente no encontrado")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
+        public async Task<ActionResult> CambiarCorreo(Guid id, [FromBody] EmailChagueDto newCorreo)
+        {
+            using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
+            try
+            {
+                if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !newCorreo.Correo.Contains("@"))
+                {
+                    logsApi.Informacion("Correo rechazado por no contener @");
+                    return BadRequest(new { message = "Ingrese un correo válido" });
+                }   
+                var cliente = await mdtecnologiaContext.Clientes.FindAsync(newCorreo.Id);
+                if (cliente == null)
+                {
+                    logsApi.Informacion($"Cliente con ID {newCorreo.Id} no encontrado para actualizar su correo");
+                    return NotFound();
+                }
+                if (cliente.Correo == newCorreo.Correo) {
+                    logsApi.Informacion("Correo rechazado por ser igual al actual");
+                    return BadRequest(new { correo = "El correo proporcionado es igual al correo actual" });
+                }
+                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.Correo);
+                if (verificorreo)
+                {
+                    logsApi.Informacion("El correo ya esta registrado");
+                    return BadRequest(new { correo = "Correo ya en Uso" });
+                }
+
+                cliente.Correo = newCorreo.Correo;
+                await mdtecnologiaContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                logsApi.Informacion($"Correo del cliente con ID {cliente.Id} ha actualizado su correo");
+                return Ok(new { message = "Correo actualizado con éxito" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                logsApi.Excepciones(ex, $"Error al actualizar el correo del cliente con ID {newCorreo.Id}");
+                return Problem();
+            }
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Elimina un cliente", Description = "Se elimina un cliente de la base de datos")]
+        [SwaggerResponse(204, "Cliente eliminado")]
+        [SwaggerResponse(404, "Cliente no encontrado")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
+        public async Task<ActionResult> DeleteCliente(Guid id)
+        {
+            using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
+            try
+            {
+                var cliente = await mdtecnologiaContext.Clientes.FindAsync(id);
+                if (cliente == null)
+                {
+                    logsApi.Informacion($"Cliente no Encontrado para eliminar con id {id}");
+                    return NotFound();
+                }
+                mdtecnologiaContext.Clientes.Remove(cliente);
+                await mdtecnologiaContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                logsApi.Advertencia($"Cliente con ID {id} eliminado con éxito");
+                return Ok(new { message = "Cliente eliminado con éxito" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                logsApi.Excepciones(ex, $"Error al eliminar el cliente con ID {id}");
+                return Problem("Ocurrió un error al eliminar el cliente.");
+            }
+        }
+
         [SwaggerIgnore]
         private async Task<Clientes?> CrearCliente(ClienteDto newCliente)
         {
@@ -224,85 +314,6 @@ namespace MD_Tech.Controllers
             await mdtecnologiaContext.Clientes.AddAsync(cliente);
             await mdtecnologiaContext.SaveChangesAsync();
             return cliente;
-        }
-
-        [HttpPatch("correo/{id}")]
-        [Authorize]
-        public async Task<ActionResult> CambiarCorreo(Guid id, [FromBody] EmailChagueDto newCorreo)
-        {
-            using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
-
-            try
-            {
-
-                if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !newCorreo.Correo.Contains("@"))
-                {
-                    logsApi.Informacion("Correo rechazado por no contener @");
-                    return BadRequest(new { message = "Ingrese un correo válido" });
-                }
-                
-                var cliente = await mdtecnologiaContext.Clientes.FindAsync(newCorreo.Id);
-                if (cliente == null)
-                {
-                    logsApi.Informacion($"Cliente con ID {newCorreo.Id} no encontrado para actualizar su correo");
-                    return NotFound();
-                }
-                if (cliente.Correo == newCorreo.Correo) {
-                    logsApi.Informacion("Correo rechazado por ser igual al actual");
-                    return BadRequest(new { correo = "El correo proporcionado es igual al correo actual" });
-                }
-                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.Correo);
-                if (verificorreo)
-                {
-                    logsApi.Informacion("El correo ya esta registrado");
-                    return BadRequest(new { correo = "Correo ya en Uso" });
-                }
-
-                cliente.Correo = newCorreo.Correo;
-                await mdtecnologiaContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                logsApi.Informacion($"Correo del cliente con ID {newCorreo.Id} ha actualizado su correo");
-                return Ok(new { message = "Correo actualizado con éxito" });
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                logsApi.Excepciones(ex, $"Error al actualizar el correo del cliente con ID {newCorreo.Id}");
-                return Problem();
-            }
-        }
-
-        [HttpDelete("{id}")]
-        [Authorize]
-        public async Task<ActionResult> DeleteCliente(Guid id)
-        {
-            using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
-
-            try
-            {
-                var cliente = await mdtecnologiaContext.Clientes.FindAsync(id);
-                if (cliente == null)
-                {
-                    logsApi.Informacion($"Cliente no Encontrado para eliminar con id {id}");
-                    return NotFound();
-                }
-
-                mdtecnologiaContext.Clientes.Remove(cliente);
-                await mdtecnologiaContext.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                logsApi.Advertencia($"Cliente con ID {id} eliminado con éxito");
-                return Ok(new { message = "Cliente eliminado con éxito" });
-            }
-            catch (Exception ex)
-            {
-                // No deberia dar error nunca
-                await transaction.RollbackAsync();
-                logsApi.Excepciones(ex, $"Error al eliminar el cliente con ID {id}");
-                return Problem("Ocurrió un error al eliminar el cliente.");
-            }
-
         }
     }
 }
