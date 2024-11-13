@@ -56,6 +56,24 @@ namespace MD_Tech.Controllers
         {
             try
             {
+                var vali = await mdtecnologiaContext.Clientes.AnyAsync(n => n.Usuario == newCliente.IdUsuario);
+                if (vali)
+                {
+                    logsApi.Errores("El Usuario que ingreso ya esta Afiliado a un cliente");
+                    return BadRequest(new { Usuario = "Error, el Usuario que ingreso ya esta Afiliado a un cliente" });
+                }
+                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCliente.Correo);
+                if (verificorreo)
+                {
+                    logsApi.Informacion("El correo ya esta registrado");
+                    return BadRequest(new { correo = "Correo ya en Uso" });
+                }
+                if (!newCliente.Correo.Contains("@") || newCliente.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(newCliente.Correo))
+                {
+                    logsApi.Errores("El correo ingresado no cuenta con formato de correo");
+                    return BadRequest(new { correo = "Ingrese un correo Valido" });
+                }
+
                 var cliente = await CrearCliente(newCliente);
                 if (cliente != null)
                 {
@@ -125,6 +143,11 @@ namespace MD_Tech.Controllers
                 {
                     logsApi.Informacion("registro rechazado ya existe ese username");
                     return BadRequest(new { username = "nombre de usuario en uso, intente nuevamente" });
+                }
+                if (!clienteUsuario.Correo.Contains("@") || clienteUsuario.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(clienteUsuario.Correo))
+                {
+                    logsApi.Errores("El correo ingresado no cuenta con formato de correo");
+                    return BadRequest(new { correo = "Ingrese un correo Valido" });
                 }
                 var usuario = new Usuarios
                 {
@@ -211,11 +234,6 @@ namespace MD_Tech.Controllers
 
             try
             {
-                if (id != newCorreo.Id)
-                {
-                    logsApi.Informacion($"El id de la ruta {id} no coincide con el body {newCorreo.Id}");
-                    return BadRequest(new { Id = "los id no coinciden" });
-                } 
 
                 if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !newCorreo.Correo.Contains("@"))
                 {
