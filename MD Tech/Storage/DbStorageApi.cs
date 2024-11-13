@@ -1,28 +1,29 @@
 ﻿using MD_Tech.Contexts;
 using Microsoft.EntityFrameworkCore;
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace MD_Tech.Storage
 {
+    [Obsolete("Esta implementación no es recomendada, considere usar otra", false)]
     public class DbStorageApi : IStorageApi
     {
         private readonly ImagenesContext context;
         private readonly LogsApi logger;
+        private readonly Uri urlBase;
         private static bool created = false;
 
         public DbStorageApi(DbContextOptions<MdtecnologiaContext> contextOptions) 
         {
             context = new ImagenesContext(contextOptions);
             logger = new LogsApi(GetType());
+            urlBase = new Uri("http://localhost:5294/api");
             if (!created)
             {
-                CreateTable();
+                _ = CreateTable();
                 created = true;
             }
         }
 
-        private async void CreateTable()
+        private async Task CreateTable()
         {
             using var transaction = await context.Database.BeginTransactionAsync();
             try
@@ -44,34 +45,40 @@ namespace MD_Tech.Storage
             }
         }
 
-        public async Task<object?> GetObjectAsync(string objectName)
+        public async Task<StorageApiDto?> GetObjectAsync(string objectName)
         {
             var result = await context.Imagenes.Where(i => EF.Functions.ILike(i.ImagenName, $"%{objectName}%")).FirstOrDefaultAsync();
-            if (result == null)
+            return result == null ? null : new StorageApiDto()
             {
-                return null;
-            }
-            return result;
+                Name = result.ImagenName,
+                Type = result.Type,
+                Stream = new MemoryStream(result.ImagenData), 
+                Status = true,
+                Url = null,
+            };
         }
 
-        public async Task<Uri?> PutObjectAsync(Stream objectToSave, string objectName, string type)
+        public async Task<StorageApiDto?> PutObjectAsync(StorageApiDto storageApiDto)
         {
             await using var ms = new MemoryStream();
-            await objectToSave.CopyToAsync(ms);
+            await storageApiDto.Stream.CopyToAsync(ms);
             var imagenData = ms.ToArray();
 
             var imagen = new Imagenes()
             {
                 Id = Guid.NewGuid(),
-                ImagenName = objectName,
-                Type = type,
+                ImagenName = storageApiDto.Name,
+                Type = storageApiDto.Type,
                 ImagenData = imagenData
             };
             await context.AddAsync(imagen);
             await context.SaveChangesAsync();
-            if (Uri.TryCreate($"http://localhost:5294/api/Imagenes/{imagen.ImagenName}", UriKind.Absolute, out Uri? newUri))
+            if (Uri.TryCreate(urlBase, $"/Imagenes/{imagen.ImagenName}", out Uri? newUri))
             {
-                return newUri;
+                storageApiDto.Url = newUri;
+                storageApiDto.Status = true;
+                storageApiDto.Stream = Stream.Null;
+                return storageApiDto;
             }
             else
             {
@@ -134,16 +141,12 @@ namespace MD_Tech.Storage
         }
     }
 
-    [Table("imagenes")]
     public partial class Imagenes
     {
-        [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         public Guid Id { get; set; }
 
         public string ImagenName { get; set; } = null!;
 
-        [StringLength(50, MinimumLength = 1)]
         public string Type { get; set; } = null!;
 
         public byte[] ImagenData { get; set; } = null!;
