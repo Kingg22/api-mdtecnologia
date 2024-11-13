@@ -1,4 +1,5 @@
-﻿using Oci.Common.Auth;
+﻿using NuGet.Protocol;
+using Oci.Common.Auth;
 using Oci.ObjectstorageService;
 using Oci.ObjectstorageService.Requests;
 
@@ -26,7 +27,7 @@ namespace MD_Tech.Storage
             }
         }
 
-        public async Task<object?> GetObjectAsync(string objectName)
+        public async Task<StorageApiDto?> GetObjectAsync(string objectName)
         {
             if (string.IsNullOrWhiteSpace(objectName))
             {
@@ -45,7 +46,14 @@ namespace MD_Tech.Storage
             {
                 var response = await client.GetObject(getObjectRequest);
                 logs.Informacion($"Obtener objeto exitoso ETAG: {response.ETag}");
-                return response;
+                return new StorageApiDto()
+                {
+                    Name = objectName,
+                    Type = response.ContentType,
+                    Url = new Uri(client.GetEndpoint(), $"/n/{Namespace}/b/{BucketName}/o/prueba"),
+                    Status = true,
+                    Stream = response.InputStream,
+                };
             } catch (Exception ex)
             {
                 logs.Excepciones(ex, "Ha ocurrido un error al obtener de OCI");
@@ -53,23 +61,30 @@ namespace MD_Tech.Storage
             return null;
         }
 
-        public async Task<Uri?> PutObjectAsync(Stream objectToSave, string objectName, string type)
+        public async Task<StorageApiDto?> PutObjectAsync(StorageApiDto storageDto)
         {
             using var client = new ObjectStorageClient(Provider, new());
             var putObjectRequest = new PutObjectRequest()
             {
                 BucketName = BucketName,
                 NamespaceName = Namespace,
-                ObjectName = objectName,
-                PutObjectBody = objectToSave,
-                ContentType = type,
+                ObjectName = storageDto.Name,
+                PutObjectBody = storageDto.Stream,
+                ContentType = storageDto.Type,
             };
 
             try
             {
                 var response = await client.PutObject(putObjectRequest);
                 logs.Informacion($"Subida de objecto a OCI exitoso ETAG: {response.ETag}");
-                return new Uri(client.GetEndpoint(), $"/n/{Namespace}/b/{BucketName}/o/{objectName}");
+                return new StorageApiDto()
+                {
+                    Status = true,
+                    Name = storageDto.Name,
+                    Type = storageDto.Type,
+                    Stream = Stream.Null,
+                    Url = new Uri(client.GetEndpoint(), $"/n/{Namespace}/b/{BucketName}/o/{storageDto.Name}")
+                };
             }
             catch (Exception ex)
             {
