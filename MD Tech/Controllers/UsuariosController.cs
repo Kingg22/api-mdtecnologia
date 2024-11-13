@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Swashbuckle.AspNetCore.Annotations;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -26,10 +27,13 @@ namespace MD_Tech.Controllers
             var rsa = RSA.Create();
             rsa.ImportFromPem(System.IO.File.ReadAllText("private.pem"));
             PrivateKey = new RsaSecurityKey(rsa);
-            log = new LogsApi(typeof(UsuariosController));
+            log = new LogsApi(GetType());
         }
 
         [HttpPost("login")]
+        [SwaggerOperation(Summary = "Iniciar sesión", Description = "Concede acceso a los endpoints privados de la API")]
+        [SwaggerResponse(200, "Acceso concedido", typeof(string))]
+        [SwaggerResponse(401, "Acceso denegado, razones no especificadas")]
         public async Task<ActionResult<Dictionary<string, string>>> Login([FromBody] LoginRequest loginRequest)
         {
             var usuario = await Mdtecnologia.Usuarios.FirstOrDefaultAsync(u => u.Username.Equals(loginRequest.Email));
@@ -76,6 +80,9 @@ namespace MD_Tech.Controllers
         }
 
         [HttpPost("register")]
+        [SwaggerOperation(Summary = "Crea un usuario", Description = "Agrega un nuevo usuario a la base de datos")]
+        [SwaggerResponse(201, "Usuario creado", typeof(UsuarioDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
         public async Task<ActionResult<UsuarioDto>> CreateUser([FromBody] RegisterUserDto register)
         {
             if (await Mdtecnologia.Usuarios.AnyAsync(u => u.Username.Equals(register.Username)))
@@ -125,6 +132,10 @@ namespace MD_Tech.Controllers
         }
 
         [HttpPatch("restore-password")]
+        [SwaggerOperation(Summary = "Cambiar contraseña", Description = "Actualiza únicamente la contraseña del usuario")]
+        [SwaggerResponse(200, "Contraseña actualizada", typeof(string))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(404, "Usuario no encontrado")]
         public async Task<ActionResult<Dictionary<string, string>>> ChangePassword([FromBody] RestoreDto restore)
         {
             var usuario = await Mdtecnologia.Usuarios.FirstOrDefaultAsync(u => u.Username.Equals(restore.Username));
@@ -153,6 +164,10 @@ namespace MD_Tech.Controllers
 
         [HttpPut("{id}")]
         [Authorize]
+        [SwaggerOperation(Summary = "Actualiza un usuario", Description = "Se actualizan todos los campos de un usuario. No incluye sus relaciones")]
+        [SwaggerResponse(200, "Usuario actualizado", typeof(UsuarioDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(404, "Usuario no encontrado")]
         public async Task<ActionResult<UsuarioDto>> UpdateProfile(Guid id, [FromBody] UsuarioUpdateDto usuarioDto)
         {
             if (id != usuarioDto.Id)
@@ -193,6 +208,9 @@ namespace MD_Tech.Controllers
 
         [HttpDelete("{id}")]
         [Authorize]
+        [SwaggerOperation(Summary = "Elimina un usuario", Description = "Se elimina un usuario de la base de datos")]
+        [SwaggerResponse(204, "Usuario eliminado")]
+        [SwaggerResponse(404, "Usuario no encontrado")]
         public async Task<ActionResult> DeleteUser(Guid id)
         {
             var usuario = await Mdtecnologia.Usuarios.FindAsync(id);
@@ -207,29 +225,62 @@ namespace MD_Tech.Controllers
 
         [HttpGet]
         [Authorize]
-        public async Task<ActionResult<List<UsuarioDto>>> GetAll([FromQuery] int limit = 25, [FromQuery] int page = 0)
+        [SwaggerOperation(Summary = "Obtiene todos los usuarios", Description = "Devuelve una lista de usuarios")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(List<UsuarioDto>))]
+        public async Task<ActionResult<List<UsuarioDto>>> GetAll([FromQuery] int Limit = 25, [FromQuery] int Page = 0)
         {
             // TODO colocar filtrado
-            if (page < 0)
+            if (Page < 0)
             {
                 return BadRequest(new { offset = "el número de página debe ser mayor o igual a 0" });
             }
-            if (limit < 1)
+            if (Limit < 1)
             {
                 return BadRequest(new { limit = "la cantidad debe ser mayor a 0" });
             }
-            log.Depuracion($"Pagination page: {page} Limit {limit}");
+            log.Depuracion($"Pagination page: {Page} Limit {Limit}");
             var totalUsers = await Mdtecnologia.Usuarios.CountAsync();
-            var hasNextPage = (page + 1) * limit < totalUsers;
+            var hasNextPage = (Page + 1) * Limit < totalUsers;
+            // Calcula la página anterior que contiene resultados
+            int previousPage = Page - 1;
+            while (previousPage > 0 && previousPage * Limit >= totalUsers)
+            {
+                previousPage--;
+            }
+
+            var nextUrl = hasNextPage
+                ? Url.Action(
+                    nameof(GetUsuario),
+                    "Usuarios",
+                    new
+                    {
+                        Limit,
+                        Page = Page + 1
+                    },
+                    Request.Scheme)
+                : null;
+
+            var previousUrl = previousPage >= 0 && previousPage * Limit < totalUsers
+                ? Url.Action(
+                    nameof(GetUsuario),
+                    "Usuarios",
+                    new
+                    {
+                        Limit,
+                        Page = previousPage
+                    },
+                    Request.Scheme
+                ) : null;
+
             return Ok(new
             {
                 count = totalUsers,
-                next = hasNextPage ? Url.Action(nameof(GetAll), "Usuarios", new { limit, page = page + 1 }, Request.Scheme) : null,
-                previous = page > 0 ? Url.Action(nameof(GetAll), "Usuarios", new { limit, page = page - 1 }, Request.Scheme) : null,
+                next = nextUrl,
+                previous = previousUrl,
                 usuarios = await Mdtecnologia.Usuarios
                 .OrderBy(u => u.Id)
-                .Skip(page * limit)
-                .Take(limit)
+                .Skip(Page * Limit)
+                .Take(Limit)
                 .Select(u => new UsuarioDto()
                 {
                     Id = u.Id,
@@ -246,6 +297,9 @@ namespace MD_Tech.Controllers
 
         [HttpGet("{id}")]
         [Authorize]
+        [SwaggerOperation(Summary = "Obtiene un usuario por ID", Description = "Devuelve el detalle del usuario")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(UsuarioDto))]
+        [SwaggerResponse(404, "Usuario no encontrado")]
         public async Task<ActionResult<UsuarioDto>> GetUsuario(Guid id)
         {
             var result = await Mdtecnologia.Usuarios.FindAsync(id);
