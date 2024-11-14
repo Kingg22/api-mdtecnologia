@@ -18,27 +18,32 @@ namespace MD_Tech
 
         public void Informacion(string mensaje)
         {
-            this.LOGGER.Info(mensaje);
+            mensaje = mensaje.Replace(Environment.NewLine, string.Empty);
+            LOGGER.Info(mensaje);
         }
 
         public void Advertencia(string mensaje)
         {
-            this.LOGGER.Warn(mensaje);
+            mensaje = mensaje.Replace(Environment.NewLine, string.Empty);
+            LOGGER.Warn(mensaje);
         }
 
         public void Errores(string mensaje)
         {
-            this.LOGGER.Error(mensaje);
+            mensaje = mensaje.Replace(Environment.NewLine, string.Empty);
+            LOGGER.Error(mensaje);
         }
 
         public void Depuracion(string mensaje)
         {
-            this.LOGGER.Debug(mensaje);
+            mensaje = mensaje.Replace(Environment.NewLine, string.Empty);
+            LOGGER.Debug(mensaje);
         }
 
         public void Excepciones(Exception exception, string mensaje)
         {
-            this.LOGGER.Error(exception, mensaje);
+            mensaje = mensaje.Replace(Environment.NewLine, string.Empty);
+            LOGGER.Error(exception, mensaje);
         }
     }
 }
