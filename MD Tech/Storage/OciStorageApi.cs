@@ -1,5 +1,4 @@
-﻿using NuGet.Protocol;
-using Oci.Common.Auth;
+﻿using Oci.Common.Auth;
 using Oci.ObjectstorageService;
 using Oci.ObjectstorageService.Requests;
 

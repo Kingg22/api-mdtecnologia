@@ -1,16 +1,25 @@
-﻿namespace MD_Tech.Models
+﻿using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
+
+namespace MD_Tech.Models;
+
+[Table("imagenes_productos")]
+public partial class ImagenesProducto
 {
-    public partial class ImagenesProducto
-    {
-        public Guid Id { get; set; }
+    [Key]
+    [Column("id")]
+    public Guid Id { get; set; }
 
-        public string? Descripcion { get; set; }
+    [Column("descripcion")]
+    public string? Descripcion { get; set; }
 
-        public string Url { get; set; } = null!;
+    [Column("url")]
+    public string Url { get; set; } = null!;
 
-        public Guid Producto { get; set; }
+    [Column("producto")]
+    public Guid Producto { get; set; }
 
-        public virtual Productos ProductoNavigation { get; set; } = null!;
-    }
-
+    [ForeignKey("Producto")]
+    [InverseProperty("ImagenesProductos")]
+    public virtual Producto ProductoNavigation { get; set; } = null!;
 }

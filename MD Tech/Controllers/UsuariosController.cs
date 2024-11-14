@@ -1,4 +1,4 @@
-﻿using MD_Tech.Contexts;
+﻿using MD_Tech.Context;
 using MD_Tech.DTOs;
 using MD_Tech.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -104,7 +104,7 @@ namespace MD_Tech.Controllers
             {
                 return BadRequest(new { Id = "id proporcionado en uso" });
             }
-            var usuario = new Usuarios()
+            var usuario = new Usuario()
             {
                 Id = register.Id ?? Guid.NewGuid(),
                 Username = register.Username,

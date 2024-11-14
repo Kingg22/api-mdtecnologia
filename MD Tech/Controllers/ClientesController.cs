@@ -1,4 +1,4 @@
-﻿using MD_Tech.Contexts;
+﻿using MD_Tech.Context;
 using MD_Tech.DTOs;
 using MD_Tech.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -25,7 +25,7 @@ namespace MD_Tech.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "Obtiene todos los clientes", Description = "Devuelve una lista de clientes")]
         [SwaggerResponse(200, "Operación exitosa", typeof(List<ClienteDto>))]
-        public async Task<ActionResult<List<Clientes>>> GetClientes()
+        public async Task<ActionResult<List<Cliente>>> GetClientes()
         {
             return Ok(new
             {
@@ -160,7 +160,7 @@ namespace MD_Tech.Controllers
                     logsApi.Errores("El correo ingresado no cuenta con formato de correo");
                     return BadRequest(new { correo = "Ingrese un correo Valido" });
                 }
-                var usuario = new Usuarios
+                var usuario = new Usuario
                 {
                     Id = clienteUsuario.UsuarioID != null ? (Guid)clienteUsuario.UsuarioID : Guid.NewGuid(),
                     Password = BCrypt.Net.BCrypt.HashPassword(clienteUsuario.Password),
@@ -291,7 +291,7 @@ namespace MD_Tech.Controllers
         }
 
         [SwaggerIgnore]
-        private async Task<Clientes?> CrearCliente(ClienteDto newCliente)
+        private async Task<Cliente?> CrearCliente(ClienteDto newCliente)
         {
             var usuario = await mdtecnologiaContext.Usuarios.FindAsync(newCliente.IdUsuario);
             if (usuario == null ||
@@ -302,7 +302,7 @@ namespace MD_Tech.Controllers
                 return null;
             }
 
-            var cliente = new Clientes()
+            var cliente = new Cliente()
             {
                 Nombre = newCliente.Nombre,
                 Apellido = newCliente.Apellido,
