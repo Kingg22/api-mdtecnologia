@@ -64,6 +64,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = "Autenticación JWT usando el esquema 'Bearer'. Ejemplo: 'Bearer {token}'"
     });
     c.OperationFilter<SecurityRequirementsOperationFilter>();
+    c.OperationFilter<AddResponseHeadersFilter>();
     // Configuración adicional para representar los tipos NodaTime en la documentación
     c.MapType<Instant>(() => new OpenApiSchema { Type = "string", Format = "date-time" });
     c.MapType<LocalDate>(() => new OpenApiSchema { Type = "string", Format = "date" });
