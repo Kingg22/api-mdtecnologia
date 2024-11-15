@@ -2,9 +2,11 @@
 using Microsoft.EntityFrameworkCore;
 using MD_Tech.Context;
 using MD_Tech.Models;
-using Microsoft.AspNetCore.Authorization;
 using MD_Tech.DTOs;
+using MD_Tech.Storage;
+using Microsoft.AspNetCore.Authorization;
 using Swashbuckle.AspNetCore.Annotations;
+using Swashbuckle.AspNetCore.Filters;
 using System.Reflection;
 using NodaTime;
 
@@ -16,10 +18,12 @@ namespace MD_Tech.Controllers
     {
         private readonly MdtecnologiaContext MdTecnologiaContext;
         private readonly LogsApi logs;
+        private readonly IStorageApi storageApi;
 
-        public ProductosController(MdtecnologiaContext MdTecnologiaContext)
+        public ProductosController(MdtecnologiaContext MdTecnologiaContext, IStorageApi storageApi)
         {
             this.MdTecnologiaContext = MdTecnologiaContext;
+            this.storageApi = storageApi;
             logs = new LogsApi(GetType());
         }
 
@@ -117,31 +121,8 @@ namespace MD_Tech.Controllers
                 .Take(paginacionDto.Limit)
                 .Include(p => p.ImagenesProductos)
                 .Include(p => p.ProductosProveedores)
-                .Select(p => new ProductosDto()
-                {
-                    Id = p.Id,
-                    Nombre = p.Nombre,
-                    Marca = p.Marca,
-                    Descripcion = p.Descripcion,
-                    Categoria = p.Categoria,
-                    Imagenes = p.ImagenesProductos.Select(img => new ImagenesProductoDto()
-                    {
-                        Id = img.Id,
-                        Url = img.Url,
-                        Descripcion = img.Descripcion,
-                        Producto = img.Producto,
-                    }).ToList(),
-                    Proveedores = p.ProductosProveedores.Select(pp => new ProductoProveedorDto()
-                    {
-                        Producto = pp.Producto,
-                        Proveedor = pp.Proveedor,
-                        Precio = pp.Precio,
-                        Impuesto = pp.Impuesto,
-                        Total = pp.Total,
-                        FechaActualizado = pp.FechaActualizado,
-                        Stock = pp.Stock,
-                    }).ToList()
-                }).AsNoTracking()
+                .Select(p => new ProductosDto(p))
+                .AsNoTracking()
                 .ToListAsync()
             });
         }
@@ -156,34 +137,8 @@ namespace MD_Tech.Controllers
                 .Include(producto => producto.ProductosProveedores)
                 .Include(p => p.ImagenesProductos)
                 .OrderBy(p => p.Id)
-                .FirstOrDefaultAsync();
-            return p == null ? NotFound() : Ok(new
-            {
-                producto = new ProductosDto()
-                {
-                    Id = id,
-                    Nombre = p.Nombre,
-                    Marca = p.Marca,
-                    Descripcion = p.Descripcion,
-                    Imagenes = p.ImagenesProductos.Select(img => new ImagenesProductoDto()
-                    {
-                        Id = img.Id,
-                        Url = img.Url,
-                        Descripcion = img.Descripcion,
-                        Producto = img.Producto,
-                    }).ToList(),
-                    Proveedores = p.ProductosProveedores.Select(pp => new ProductoProveedorDto()
-                    {
-                        Producto = pp.Producto,
-                        Proveedor = pp.Proveedor,
-                        Precio = pp.Precio,
-                        Impuesto = pp.Impuesto,
-                        Total = pp.Total,
-                        FechaActualizado = pp.FechaActualizado,
-                        Stock = pp.Stock,
-                    }).ToList()
-                }
-            });
+                .FirstOrDefaultAsync(p => p.Id == id);
+            return p == null ? NotFound() : Ok(new { producto = new ProductosDto(p) });
         }
 
         [HttpPut("{id}")]
@@ -316,33 +271,7 @@ namespace MD_Tech.Controllers
                 await transaction.CommitAsync();
 
                 await MdTecnologiaContext.Entry(producto).ReloadAsync();
-                return Ok(new
-                {
-                    producto = new ProductosDto()
-                    {
-                        Id = producto.Id,
-                        Nombre = producto.Nombre,
-                        Marca = producto.Marca,
-                        Descripcion = producto.Descripcion,
-                        Imagenes = producto.ImagenesProductos.Select(img => new ImagenesProductoDto()
-                        {
-                            Id = img.Id,
-                            Url = img.Url,
-                            Descripcion = img.Descripcion,
-                            Producto = img.Producto,
-                        }).ToList(),
-                        Proveedores = producto.ProductosProveedores.Select(pp => new ProductoProveedorDto()
-                        {
-                            Producto = pp.Producto,
-                            Proveedor = pp.Proveedor,
-                            Precio = pp.Precio,
-                            Impuesto = pp.Impuesto,
-                            Total = pp.Total,
-                            FechaActualizado = pp.FechaActualizado,
-                            Stock = pp.Stock,
-                        }).ToList()
-                    }
-                });
+                return Ok(new { producto = new ProductosDto(producto) });
             }
             catch (Exception ex)
             {
@@ -356,6 +285,7 @@ namespace MD_Tech.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "Crea un producto", Description = "Agrega un nuevo producto a la base de datos")]
         [SwaggerResponse(201, "Producto creado", typeof(ProductosDto))]
+        [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult<ProductosDto>> PostProductos([FromBody] ProductosDto productoDto)
@@ -469,33 +399,7 @@ namespace MD_Tech.Controllers
 
                 await transaction.CommitAsync();
                 await MdTecnologiaContext.Entry(productos).ReloadAsync();
-                return Created(Url.Action(nameof(GetProductos), "Productos", new { id = productos.Id }, Request.Scheme), new
-                {
-                    producto = new ProductosDto()
-                    {
-                        Id = productos.Id,
-                        Nombre = productos.Nombre,
-                        Marca = productos.Marca,
-                        Descripcion = productos.Descripcion,
-                        Imagenes = productos.ImagenesProductos.Select(img => new ImagenesProductoDto()
-                        {
-                            Id = img.Id,
-                            Url = img.Url,
-                            Descripcion = img.Descripcion,
-                            Producto = img.Producto,
-                        }).ToList(),
-                        Proveedores = productos.ProductosProveedores.Select(pp => new ProductoProveedorDto()
-                        {
-                            Producto = pp.Producto,
-                            Proveedor = pp.Proveedor,
-                            Precio = pp.Precio,
-                            Impuesto = pp.Impuesto,
-                            Total = pp.Total,
-                            FechaActualizado = pp.FechaActualizado,
-                            Stock = pp.Stock,
-                        }).ToList()
-                    }
-                });
+                return Created(Url.Action(nameof(GetProductos), "Productos", new { id = productos.Id }, Request.Scheme), new { producto = new ProductosDto(productos) });
             }
             catch (Exception ex)
             {
@@ -508,27 +412,52 @@ namespace MD_Tech.Controllers
         [HttpPost("image/{id}")]
         [Authorize]
         [SwaggerOperation(Summary = "Añade una imagen a un producto", Description = "Agrega una nueva imagen al servicio utilizado y guarda en la base de datos su referencia")]
-        [SwaggerResponse(200, "Imagen guardada")]
+        [SwaggerResponse(202, "Imagen guardada")]
+        [SwaggerResponseHeader(202, "location", "string", "Enlace a la imagen guardada")]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         [SwaggerResponse(404, "Producto no encontrado")]
+        [SwaggerResponse(500, "No se pudo guardar la imagen")]
         public async Task<ActionResult> UploadImage(Guid id, IFormFile image)
         {
             if (image == null || image.Length == 0)
             {
-                return BadRequest(new { message = "No se ha proporcionado un archivo de imagen válido." });
+                return BadRequest(new { image = "No se ha proporcionado un archivo de imagen válido." });
             }
-
             if (!image.ContentType.StartsWith("image/"))
             {
-                return BadRequest(new { message = "El archivo debe ser una imagen válida." });
+                return BadRequest(new { image = "El archivo debe ser una imagen válida." });
+            }
+            // 5 MB en bytes limitado por tema de rendimiento del fronted y costo de almacenamiento
+            const long maxSizeInBytes = 5 * 1024 * 1024;
+            if (image.Length > maxSizeInBytes)
+            {
+                return BadRequest(new { image = "El archivo de imagen excede el tamaño máximo permitido de 5 MB." });
             }
 
             var producto = await MdTecnologiaContext.Productos.FindAsync(id);
-
             if (producto != null)
             {
-                // TODO guardar usando el servicio IStorageApi y guardar esta referencia en la base de datos
-                return NoContent();
+                var result = await storageApi.PutObjectAsync(new StorageApiDto()
+                {
+                    Name = image.FileName,
+                    Type = image.ContentType,
+                    Stream = image.OpenReadStream(),
+                });
+                if (result != null && result.Status && result.Url != null)
+                {
+                    producto.ImagenesProductos.Add(new ImagenesProducto()
+                    {
+                        Producto = producto.Id,
+                        Descripcion = result.Name,
+                        Url = result.Url.ToString(),
+                    });
+                    await MdTecnologiaContext.SaveChangesAsync();
+                    return Accepted(result.Url);
+                }
+                else
+                {
+                    return Problem();
+                }
             }
             else
             {
@@ -553,6 +482,40 @@ namespace MD_Tech.Controllers
             await MdTecnologiaContext.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        [HttpDelete("{id}/{idImagen}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Elimina la imagen de referencia de un producto", Description = "Se elimina la imagen del servicio utilizado y de la base de datos")]
+        [SwaggerResponse(200, "Imagen eliminada del producto", typeof(ProductosDto))]
+        [SwaggerResponse(404, "No encontrado, especificado en la propiedad en el body", typeof(Dictionary<string, string>))]
+        [SwaggerResponse(500, "No se pudo eliminar la imagen en el servicio")]
+        public async Task<ActionResult> DeleteImagenes(Guid id, Guid idImagen)
+        {
+            var producto = await MdTecnologiaContext.Productos.Include(p => p.ImagenesProductos).FirstOrDefaultAsync(p => p.Id == id);
+            if (producto == null)
+            {
+                return NotFound(new { producto = "No fue encontrado el producto" });
+            }
+            var imagen = producto.ImagenesProductos.FirstOrDefault(imagenes => imagenes.Id == idImagen);
+            if (imagen == null)
+            {
+                return NotFound(new { imagen = "no fue encontrada la imagen con ese Id para ese producto" });
+            }
+            if (string.IsNullOrWhiteSpace(imagen.Descripcion))
+            {
+                return Problem("No se pudo obtener el nombre para eliminar su referencia en el servidor.");
+            }
+            var response = await storageApi.DeleteObjectAsync(imagen.Descripcion);
+            if (response)
+            {
+                MdTecnologiaContext.Remove(imagen);
+                await MdTecnologiaContext.SaveChangesAsync();
+                await MdTecnologiaContext.Entry(producto).ReloadAsync();
+                logs.Advertencia($"Se ha eliminado una imagen del producto {producto.Id}");
+                return Ok(new ProductosDto(producto));
+            }
+            return Problem("No se pudo eliminar la imagen en el servicio utilizado");
         }
 
         [SwaggerIgnore]
