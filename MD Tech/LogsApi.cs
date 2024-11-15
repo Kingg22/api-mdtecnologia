@@ -2,18 +2,13 @@
 
 namespace MD_Tech
 {
-    internal class LogsApi
+    public class LogsApi<T>
     {
         private readonly Logger LOGGER;
 
         public LogsApi()
         {
-            LOGGER = LogManager.GetLogger("Anonimous Class");
-        }
-
-        public LogsApi(Type classType)
-        {
-            LOGGER = LogManager.GetLogger(classType.FullName);
+            LOGGER = LogManager.GetLogger(typeof(T).FullName);
         }
 
         public void Informacion(string mensaje)

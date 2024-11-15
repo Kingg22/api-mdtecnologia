@@ -1,3 +1,4 @@
+using MD_Tech;
 using MD_Tech.Context;
 using MD_Tech.Storage;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -18,6 +19,7 @@ builder.Logging.ClearProviders();
 builder.Logging.AddNLog("nlog.config");
 builder.Logging.AddNLogWeb("nlog.config");
 builder.WebHost.UseNLog();
+builder.Services.AddScoped(typeof(LogsApi<>));
 
 builder.WebHost.UseKestrel(options => options.ListenAnyIP(5294));
 

@@ -14,7 +14,7 @@
         public bool Status { get; set; } = false;
         public Uri? Url { get; set; }
         public string Type { get; set; } = "application/octet-stream";
-        public required string Name { get; set; }
-        public required Stream Stream { get; set; }
+        public required string Name { get; set; } = null!;
+        public required Stream Stream { get; set; } = null!;
     }
 }

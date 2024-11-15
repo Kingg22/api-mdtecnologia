@@ -3,18 +3,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MD_Tech.Storage
 {
-    [Obsolete("Esta implementación no es recomendada, considere usar otra", false)]
+    [Obsolete("Esta implementación no es recomendada, considere usar otra. Al usar actualice la url", false)]
     public class DbStorageApi : IStorageApi
     {
         private readonly ImagenesContext context;
-        private readonly LogsApi logger;
+        private readonly LogsApi<DbStorageApi> logger;
         private readonly Uri urlBase;
         private static bool created = false;
 
-        public DbStorageApi(DbContextOptions<MdtecnologiaContext> contextOptions) 
+        public DbStorageApi(DbContextOptions<MdtecnologiaContext> contextOptions, LogsApi<DbStorageApi> logger) 
         {
             context = new ImagenesContext(contextOptions);
-            logger = new LogsApi(GetType());
+            this.logger = logger;
             urlBase = new Uri("http://localhost:5294/api");
             if (!created)
             {
@@ -91,9 +91,7 @@ namespace MD_Tech.Storage
         {
             var result = await context.Imagenes.Where(i => EF.Functions.ILike(i.ImagenName, objectName)).FirstOrDefaultAsync();
             if (result == null)
-            {
                 logger.Errores("No se pudo encontrar la imagen en la base de datos");
-            } 
             else
             {
                 context.Remove(result);

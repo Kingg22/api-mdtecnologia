@@ -7,17 +7,17 @@ namespace MD_Tech.Storage
     public class OciStorageApi : IStorageApi
     {
         private readonly ConfigFileAuthenticationDetailsProvider Provider;
-        private readonly LogsApi logs;
+        private readonly LogsApi<OciStorageApi> logger;
         private string BucketName;
         private string Namespace;
 
-        public OciStorageApi(IConfiguration configuration)
+        public OciStorageApi(IConfiguration configuration, LogsApi<OciStorageApi> logger)
         {
             var baseDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "oci", "oci-mdtech.config");
             Environment.SetEnvironmentVariable("OCI_CONFIG_FILE", baseDirectory);
             Environment.SetEnvironmentVariable("OCI_SDK_DEFAULT_RETRY_ENABLED", "true");
             Provider = new("DEFAULT");
-            logs = new LogsApi(GetType());
+            this.logger = logger;
             BucketName = configuration["ObjectStorage:OCI:BucketName"] ?? string.Empty;
             Namespace = configuration["ObjectStorage:OCI:Namespace"] ?? string.Empty;
             if (string.IsNullOrWhiteSpace(BucketName) || string.IsNullOrWhiteSpace(Namespace))
@@ -30,7 +30,7 @@ namespace MD_Tech.Storage
         {
             if (string.IsNullOrWhiteSpace(objectName))
             {
-                logs.Advertencia("Se ha rechazado búsqueda de objeto en OCI por nombre inválido");
+                logger.Advertencia("Se ha rechazado búsqueda de objeto en OCI por nombre inválido");
                 return null;
             }
             using var client = new ObjectStorageClient(Provider, new());
@@ -44,7 +44,7 @@ namespace MD_Tech.Storage
             try
             {
                 var response = await client.GetObject(getObjectRequest);
-                logs.Informacion($"Obtener objeto exitoso ETAG: {response.ETag}");
+                logger.Informacion($"Obtener objeto exitoso ETAG: {response.ETag}");
                 return new StorageApiDto()
                 {
                     Name = objectName,
@@ -55,7 +55,7 @@ namespace MD_Tech.Storage
                 };
             } catch (Exception ex)
             {
-                logs.Excepciones(ex, "Ha ocurrido un error al obtener de OCI");
+                logger.Excepciones(ex, "Ha ocurrido un error al obtener de OCI");
             }
             return null;
         }
@@ -75,7 +75,7 @@ namespace MD_Tech.Storage
             try
             {
                 var response = await client.PutObject(putObjectRequest);
-                logs.Informacion($"Subida de objecto a OCI exitoso ETAG: {response.ETag}");
+                logger.Informacion($"Subida de objecto a OCI exitoso ETAG: {response.ETag}");
                 return new StorageApiDto()
                 {
                     Status = true,
@@ -87,7 +87,7 @@ namespace MD_Tech.Storage
             }
             catch (Exception ex)
             {
-                logs.Excepciones(ex, "Ha ocurrido un error al guardar un objecto en OCI");
+                logger.Excepciones(ex, "Ha ocurrido un error al guardar un objecto en OCI");
             }
             return null;
         }
@@ -96,7 +96,7 @@ namespace MD_Tech.Storage
         {
             if (string.IsNullOrWhiteSpace(objectName))
             {
-                logs.Advertencia("Se ha rechazado eliminación de objeto en OCI por nombre inválido");
+                logger.Advertencia("Se ha rechazado eliminación de objeto en OCI por nombre inválido");
                 return false;
             }
             using var client = new ObjectStorageClient(Provider, new ());
@@ -113,7 +113,7 @@ namespace MD_Tech.Storage
                 return response.httpResponseMessage.IsSuccessStatusCode;
             } catch (Exception ex)
             {
-                logs.Excepciones(ex, "Ha ocurrido un error al eliminar en OCI");
+                logger.Excepciones(ex, "Ha ocurrido un error al eliminar en OCI");
             }
             return false;
         }
