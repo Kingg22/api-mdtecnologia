@@ -19,20 +19,20 @@ namespace MD_Tech.Controllers
     {
         private readonly MdtecnologiaContext Mdtecnologia;
         private readonly RsaSecurityKey PrivateKey;
-        private readonly LogsApi log;
+        private readonly LogsApi<UsuariosController> logger;
 
-        public UsuariosController(MdtecnologiaContext Mdtecnologia)
+        public UsuariosController(MdtecnologiaContext Mdtecnologia, LogsApi<UsuariosController> logger)
         {
-            this.Mdtecnologia = Mdtecnologia;
             var rsa = RSA.Create();
             rsa.ImportFromPem(System.IO.File.ReadAllText("private.pem"));
             PrivateKey = new RsaSecurityKey(rsa);
-            log = new LogsApi(GetType());
+            this.Mdtecnologia = Mdtecnologia;
+            this.logger = logger;
         }
 
         [HttpPost("login")]
         [SwaggerOperation(Summary = "Iniciar sesión", Description = "Concede acceso a los endpoints privados de la API")]
-        [SwaggerResponse(200, "Acceso concedido", typeof(string))]
+        [SwaggerResponse(200, "Acceso concedido", typeof(Dictionary<string, string>))]
         [SwaggerResponse(401, "Acceso denegado, razones no especificadas")]
         public async Task<ActionResult<Dictionary<string, string>>> Login([FromBody] LoginRequest loginRequest)
         {
@@ -41,9 +41,9 @@ namespace MD_Tech.Controllers
             {
                 if (usuario.Password != null)
                 {
-                    log.Depuracion($"Usuario ID: {usuario.Id}");
+                    logger.Depuracion($"Usuario ID: {usuario.Id}");
                     var passMatch = BCrypt.Net.BCrypt.Verify(loginRequest.Password, usuario.Password);
-                    log.Depuracion($"Bcrypt verify: {passMatch}");
+                    logger.Depuracion($"Bcrypt verify: {passMatch}");
                     if (passMatch && !usuario.Disabled)
                     {
                         var tokenDes = new SecurityTokenDescriptor()
@@ -59,23 +59,17 @@ namespace MD_Tech.Controllers
                         };
                         var tokenHandler = new JwtSecurityTokenHandler();
                         var jwtToken = tokenHandler.CreateToken(tokenDes);
-                        log.Informacion($"Se ha generado un nuevo token al usuario: {usuario.Id}");
+                        logger.Informacion($"Se ha generado un nuevo token al usuario: {usuario.Id}");
                         return Ok(new { token = tokenHandler.WriteToken(jwtToken) });
                     }
                     else
-                    {
-                        log.Informacion("login fallido: la contraseña no coincide y/o usuario deshabilitado");
-                    }
+                        logger.Informacion("login fallido: la contraseña no coincide y/o usuario deshabilitado");
                 }
                 else
-                {
-                    log.Informacion("login fallido: el usuario no tiene contraseña");
-                }
+                    logger.Informacion("login fallido: el usuario no tiene contraseña");
             }
             else
-            {
-                log.Informacion("login fallido: no se encontró usuario en la BD");
-            }
+                logger.Informacion("login fallido: no se encontró usuario en la BD");
             return Unauthorized();
         }
 
@@ -87,23 +81,21 @@ namespace MD_Tech.Controllers
         {
             if (await Mdtecnologia.Usuarios.AnyAsync(u => u.Username.Equals(register.Username)))
             {
-                log.Informacion("registro rechazado ya existe ese username");
+                logger.Informacion("registro rechazado ya existe ese username");
                 return BadRequest(new { username = "nombre de usuario en uso, intente nuevamente" });
             }
             if (string.IsNullOrWhiteSpace(register.Password) || register.Password.Contains(register.Username))
             {
-                log.Informacion("registro rechazado por contraseña contiene usuario");
+                logger.Informacion("registro rechazado por contraseña contiene usuario");
                 return BadRequest(new { password = "ingrese una contraseña válida" });
             }
             if (string.IsNullOrWhiteSpace(register.Username))
             {
-                log.Informacion("No proporcionó un username");
+                logger.Informacion("No proporcionó un username");
                 return BadRequest(new { username = "el username es requerido" });
             }
             if (register.Id != null && await Mdtecnologia.Usuarios.FindAsync(register.Id) != null)
-            {
                 return BadRequest(new { Id = "id proporcionado en uso" });
-            }
             var usuario = new Usuario()
             {
                 Id = register.Id ?? Guid.NewGuid(),
@@ -114,50 +106,39 @@ namespace MD_Tech.Controllers
             };
             await Mdtecnologia.Usuarios.AddAsync(usuario);
             await Mdtecnologia.SaveChangesAsync();
-            log.Informacion($"nuevo usuario creado ID: {usuario.Id}");
+            logger.Informacion($"nuevo usuario creado ID: {usuario.Id}");
             return Created(Url.Action(nameof(GetUsuario), "Usuarios", new { id = usuario.Id }, Request.Scheme), new
             {
-                usuario =
-                new UsuarioDto()
-                {
-                    Id = usuario.Id,
-                    Username = usuario.Username,
-                    Rol = usuario.Rol,
-                    Disabled = usuario.Disabled,
-                    CreatedAt = usuario.CreatedAt,
-                    UpdatedAt = usuario.UpdatedAt,
-                },
+                usuario = new UsuarioDto(usuario),
                 warning = "debe relacionar el usuario"
             });
         }
 
         [HttpPatch("restore-password")]
         [SwaggerOperation(Summary = "Cambiar contraseña", Description = "Actualiza únicamente la contraseña del usuario")]
-        [SwaggerResponse(200, "Contraseña actualizada", typeof(string))]
+        [SwaggerResponse(200, "Contraseña actualizada", typeof(Dictionary<string, string>))]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         [SwaggerResponse(404, "Usuario no encontrado")]
         public async Task<ActionResult<Dictionary<string, string>>> ChangePassword([FromBody] RestoreDto restore)
         {
             var usuario = await Mdtecnologia.Usuarios.FirstOrDefaultAsync(u => u.Username.Equals(restore.Username));
             if (usuario == null)
-            {
                 return NotFound();
-            }
             else
             {
                 if (BCrypt.Net.BCrypt.Verify(restore.Password, usuario.Password))
                 {
-                    log.Informacion("cambio de contraseña rechazado por ser igual a la actual");
+                    logger.Informacion("cambio de contraseña rechazado por ser igual a la actual");
                     return BadRequest(new { password = "la nueva contraseña no puede ser igual a la actual" });
                 }
-                if (restore.Password.Contains(usuario.Username))
+                if (restore.Password.Contains(usuario.Username, StringComparison.InvariantCultureIgnoreCase))
                 {
-                    log.Informacion("cambio de contraseña rechazado por contener su usuario");
+                    logger.Informacion("cambio de contraseña rechazado por contener su usuario");
                     return BadRequest(new { password = "la contraseña no puede tener su usuario" });
                 }
                 usuario.Password = BCrypt.Net.BCrypt.HashPassword(restore.Password);
                 await Mdtecnologia.SaveChangesAsync();
-                log.Informacion("nueva contraseña creada");
+                logger.Informacion("nueva contraseña creada");
                 return Ok(new { message = "se ha cambiado su contraseña de forma exitosa" });
             }
         }
@@ -172,37 +153,24 @@ namespace MD_Tech.Controllers
         {
             if (id != usuarioDto.Id)
             {
-                log.Informacion($"usuario de id {id} no coincide con el body id {usuarioDto.Id}");
+                logger.Informacion($"usuario de id {id} no coincide con el body id {usuarioDto.Id}");
                 return BadRequest();
             }
             if (usuarioDto.Password.Contains(usuarioDto.Username))
             {
-                log.Informacion("cambio de contraseña rechazado por contener su usuario");
+                logger.Informacion("cambio de contraseña rechazado por contener su usuario");
                 return BadRequest(new { password = "la contraseña no puede tener su usuario" });
             }
             var usuario = await Mdtecnologia.Usuarios.FindAsync(usuarioDto.Id);
             if (usuario == null)
-            {
                 return NotFound();
-            }
             else
             {
                 usuario.Username = usuarioDto.Username;
                 usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDto.Password);
                 usuario.Rol = usuarioDto.Rol.ToString();
                 await Mdtecnologia.SaveChangesAsync();
-                return Ok(new
-                {
-                    usuario = new UsuarioDto()
-                    {
-                        Id = usuario.Id,
-                        Username = usuario.Username,
-                        Rol = usuario.Rol,
-                        Disabled = usuario.Disabled,
-                        CreatedAt = usuario.CreatedAt,
-                        UpdatedAt = usuario.UpdatedAt,
-                    }
-                });
+                return Ok(new { usuario = new UsuarioDto(usuario) });
             }
         }
 
@@ -231,22 +199,17 @@ namespace MD_Tech.Controllers
         {
             // TODO colocar filtrado
             if (Page < 0)
-            {
                 return BadRequest(new { offset = "el número de página debe ser mayor o igual a 0" });
-            }
             if (Limit < 1)
-            {
                 return BadRequest(new { limit = "la cantidad debe ser mayor a 0" });
-            }
-            log.Depuracion($"Pagination page: {Page} Limit {Limit}");
+            logger.Depuracion($"Pagination page: {Page} Limit {Limit}");
+            
             var totalUsers = await Mdtecnologia.Usuarios.CountAsync();
             var hasNextPage = (Page + 1) * Limit < totalUsers;
             // Calcula la página anterior que contiene resultados
             int previousPage = Page - 1;
             while (previousPage > 0 && previousPage * Limit >= totalUsers)
-            {
                 previousPage--;
-            }
 
             var nextUrl = hasNextPage
                 ? Url.Action(
@@ -281,15 +244,7 @@ namespace MD_Tech.Controllers
                 .OrderBy(u => u.Id)
                 .Skip(Page * Limit)
                 .Take(Limit)
-                .Select(u => new UsuarioDto()
-                {
-                    Id = u.Id,
-                    Username = u.Username,
-                    Rol = u.Rol,
-                    CreatedAt = u.CreatedAt,
-                    UpdatedAt = u.UpdatedAt,
-                    Disabled = u.Disabled,
-                })
+                .Select(u => new UsuarioDto(u))
                 .AsNoTracking()
                 .ToListAsync()
             });
@@ -303,18 +258,7 @@ namespace MD_Tech.Controllers
         public async Task<ActionResult<UsuarioDto>> GetUsuario(Guid id)
         {
             var result = await Mdtecnologia.Usuarios.FindAsync(id);
-            return result == null ? NotFound() : Ok(new
-            {
-                usuario = new UsuarioDto()
-                {
-                    Id = result.Id,
-                    Username = result.Username,
-                    Disabled = result.Disabled,
-                    Rol = result.Rol,
-                    CreatedAt = result.CreatedAt,
-                    UpdatedAt = result.UpdatedAt,
-                }
-            });
+            return result == null ? NotFound() : Ok(new { usuario = new UsuarioDto(result) });
         }
     }
 }

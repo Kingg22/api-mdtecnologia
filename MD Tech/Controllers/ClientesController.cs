@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
+using Swashbuckle.AspNetCore.Filters;
 
 namespace MD_Tech.Controllers
 {
@@ -13,12 +14,12 @@ namespace MD_Tech.Controllers
     public class ClientesController : ControllerBase
     {
         private readonly MdtecnologiaContext mdtecnologiaContext;
-        private readonly LogsApi logsApi;
+        private readonly LogsApi<ClientesController> logger;
 
-        public ClientesController(MdtecnologiaContext mdtecnologiaContext)
+        public ClientesController(MdtecnologiaContext mdtecnologiaContext, LogsApi<ClientesController> logger)
         {
             this.mdtecnologiaContext = mdtecnologiaContext;
-            logsApi = new LogsApi(GetType());
+            this.logger = logger;
         }
 
         [HttpGet]
@@ -32,22 +33,7 @@ namespace MD_Tech.Controllers
                 clientes = await mdtecnologiaContext.Clientes
                 .AsNoTracking()
                 .Include(c => c.Direcciones)
-                .Select(c => new ClienteDto()
-                {
-                    Id = c.Id,
-                    Nombre = c.Nombre,
-                    Apellido = c.Apellido,
-                    Correo = c.Correo,
-                    Telefono = c.Telefono,
-                    IdUsuario = c.Usuario,
-                    Direcciones = c.Direcciones.Select(d => new DireccionDto()
-                    {
-                        Id = d.Id,
-                        Descripcion = d.Descripcion,
-                        CreatedAt = d.CreatedAt,
-                        Provincia = d.Provincia,
-                    }).ToList()
-                })
+                .Select(c => new ClienteDto(c))
                 .ToListAsync()
             });
         }
@@ -60,104 +46,85 @@ namespace MD_Tech.Controllers
         public async Task<ActionResult> GetClientes(Guid id)
         {
             var resultado = await mdtecnologiaContext.Clientes.FindAsync(id);
-            return resultado != null ? Ok(new
-            {
-                cliente = new ClienteDto()
-                {
-                    Id = resultado.Id,
-                    Nombre = resultado.Nombre,
-                    Apellido = resultado.Apellido,
-                    Correo = resultado.Correo,
-                    Telefono = resultado.Telefono,
-                    IdUsuario = resultado.Usuario
-                }
-            }) : NotFound();
+            return resultado == null ? NotFound() : Ok(new { cliente = new ClienteDto(resultado) });
         }
 
         [HttpPost]
         [Authorize]
         [SwaggerOperation(Summary = "Crea un cliente", Description = "Agrega un nuevo cliente a la base de datos")]
         [SwaggerResponse(201, "Cliente creado", typeof(ClienteDto))]
+        [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult> AddCliente([FromBody] ClienteDto newCliente)
         {
             try
             {
-                var vali = await mdtecnologiaContext.Clientes.AnyAsync(n => n.Usuario == newCliente.IdUsuario);
-                if (vali)
+                if (await mdtecnologiaContext.Clientes.AnyAsync(n => n.Usuario == newCliente.IdUsuario))
                 {
-                    logsApi.Errores("El Usuario que ingreso ya esta Afiliado a un cliente");
+                    logger.Errores("El Usuario que ingreso ya esta Afiliado a un cliente");
                     return BadRequest(new { Usuario = "Error, el Usuario que ingreso ya esta Afiliado a un cliente" });
                 }
                 var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCliente.Correo);
                 if (verificorreo)
                 {
-                    logsApi.Informacion("El correo ya esta registrado");
+                    logger.Informacion("El correo ya esta registrado");
                     return BadRequest(new { correo = "Correo ya en Uso" });
                 }
                 if (!newCliente.Correo.Contains('@') || newCliente.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(newCliente.Correo))
                 {
-                    logsApi.Errores("El correo ingresado no cuenta con formato de correo");
+                    logger.Errores("El correo ingresado no cuenta con formato de correo");
                     return BadRequest(new { correo = "Ingrese un correo Valido" });
                 }
 
                 var cliente = await CrearCliente(newCliente);
                 if (cliente != null)
                 {
-                    logsApi.Informacion("se ha creado un nuevo cliente");
-                    return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = cliente.Id }, Request.Scheme), new
-                    {
-                        cliente = new ClienteDto()
-                        {
-                            Nombre = cliente.Nombre,
-                            Apellido = cliente.Apellido,
-                            IdUsuario = cliente.Usuario,
-                            Correo = cliente.Correo,
-                            Id = cliente.Id,
-                            Telefono = cliente.Telefono,
-                        }
-                    });
+                    logger.Informacion("se ha creado un nuevo cliente");
+                    return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = cliente.Id }, Request.Scheme), new { cliente = new ClienteDto(cliente) });
                 }
                 else
                 {
-                    logsApi.Depuracion("Error al crear el Usuario");
+                    logger.Depuracion("Error al crear el Usuario");
                     return BadRequest(new { dto = "revise los campos, pueden ya estar registrados" });
                 }
             }
             catch (Exception ex)
             {
-                logsApi.Excepciones(ex, "ha Ocurrido un Error en el Enpoint AddCliente");
+                logger.Excepciones(ex, "ha Ocurrido un Error en el Enpoint AddCliente");
                 return Problem();
-
             }
         }
 
         [HttpPost("usuario")]
+        [SwaggerOperation(Summary = "Crea un cliente con su usuario", Description = "Agrega un nuevo cliente y usuario a la base de datos")]
+        [SwaggerResponse(201, "Cliente creado", typeof(ClienteDto))]
+        [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult> CrearClienteUsuario([FromBody] ClienteUsuarioDto clienteUsuario)
         {
             using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
-
             try
             {
                 if (string.IsNullOrWhiteSpace(clienteUsuario.Password) || clienteUsuario.Password.Contains(clienteUsuario.Username))
                 {
-                    logsApi.Informacion("registro rechazado por contraseña contiene usuario");
+                    logger.Informacion("registro rechazado por contraseña contiene usuario");
                     return BadRequest(new { password = "ingrese una contraseña válida" });
                 }
                 if (string.IsNullOrWhiteSpace(clienteUsuario.Username))
                 {
-                    logsApi.Informacion("No proporcionó un username");
+                    logger.Informacion("No proporcionó un username");
                     return BadRequest(new { username = "el username es requerido" });
                 }
                 if (await mdtecnologiaContext.Usuarios.AnyAsync(u => u.Username.Equals(clienteUsuario.Username)))
                 {
-                    logsApi.Informacion("registro rechazado ya existe ese username");
+                    logger.Informacion("registro rechazado ya existe ese username");
                     return BadRequest(new { username = "nombre de usuario en uso, intente nuevamente" });
                 }
                 if (!clienteUsuario.Correo.Contains("@") || clienteUsuario.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(clienteUsuario.Correo))
                 {
-                    logsApi.Errores("El correo ingresado no cuenta con formato de correo");
+                    logger.Errores("El correo ingresado no cuenta con formato de correo");
                     return BadRequest(new { correo = "Ingrese un correo Valido" });
                 }
                 var usuario = new Usuario
@@ -170,7 +137,7 @@ namespace MD_Tech.Controllers
                 };
                 await mdtecnologiaContext.Usuarios.AddAsync(usuario);
                 var result = await mdtecnologiaContext.SaveChangesAsync();
-                logsApi.Informacion("Se ha creado un nuevo Usuario");
+                logger.Informacion("Se ha creado un nuevo Usuario");
 
                 var clientedto = new ClienteDto
                 {
@@ -189,24 +156,12 @@ namespace MD_Tech.Controllers
                 }
                 await transaction.CommitAsync();
 
-                return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = crearC.Id }, Request.Scheme),
-                    new
-                    {
-                        cliente = new ClienteDto
-                        {
-                            Id = crearC.Id,
-                            Nombre = crearC.Nombre,
-                            Apellido = crearC.Apellido,
-                            Correo = crearC.Correo,
-                            Telefono = crearC.Telefono,
-                            IdUsuario = crearC.Usuario,
-                        }
-                    });
+                return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = crearC.Id }, Request.Scheme), new { cliente = new ClienteDto(crearC) });
             }
             catch (Exception ex)
             {
+                logger.Excepciones(ex, "Ocurrió un error al crear el usuario y cliente");
                 await transaction.RollbackAsync();
-                logsApi.Excepciones(ex, "Ocurrió un error al crear el usuario y cliente");
                 return Problem();
             }
         }
@@ -223,38 +178,44 @@ namespace MD_Tech.Controllers
             using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             try
             {
-                if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !newCorreo.Correo.Contains("@"))
+                if (id != newCorreo.Id)
                 {
-                    logsApi.Informacion("Correo rechazado por no contener @");
-                    return BadRequest(new { message = "Ingrese un correo válido" });
-                }   
+                    logger.Informacion($"Cliente con id {id} no coincide con el body id {newCorreo.Id}");
+                    return BadRequest(new { id = "El id del body no coincide con la ruta" });
+                }
+                if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !newCorreo.Correo.Contains('@'))
+                {
+                    logger.Informacion("Correo rechazado por no contener @");
+                    return BadRequest(new { correo = "Ingrese un correo válido" });
+                }
                 var cliente = await mdtecnologiaContext.Clientes.FindAsync(newCorreo.Id);
                 if (cliente == null)
                 {
-                    logsApi.Informacion($"Cliente con ID {newCorreo.Id} no encontrado para actualizar su correo");
+                    logger.Informacion($"Cliente con ID {newCorreo.Id} no encontrado para actualizar su correo");
                     return NotFound();
                 }
-                if (cliente.Correo == newCorreo.Correo) {
-                    logsApi.Informacion("Correo rechazado por ser igual al actual");
+                if (cliente.Correo == newCorreo.Correo)
+                {
+                    logger.Informacion("Correo rechazado por ser igual al actual");
                     return BadRequest(new { correo = "El correo proporcionado es igual al correo actual" });
                 }
                 var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.Correo);
                 if (verificorreo)
                 {
-                    logsApi.Informacion("El correo ya esta registrado");
+                    logger.Informacion("El correo ya esta registrado");
                     return BadRequest(new { correo = "Correo ya en Uso" });
                 }
 
                 cliente.Correo = newCorreo.Correo;
                 await mdtecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                logsApi.Informacion($"Correo del cliente con ID {cliente.Id} ha actualizado su correo");
+                logger.Informacion($"Correo del cliente con ID {cliente.Id} ha actualizado su correo");
                 return Ok(new { message = "Correo actualizado con éxito" });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                logsApi.Excepciones(ex, $"Error al actualizar el correo del cliente con ID {newCorreo.Id}");
+                logger.Excepciones(ex, $"Error al actualizar el correo del cliente con ID {newCorreo.Id}");
                 return Problem();
             }
         }
@@ -273,19 +234,19 @@ namespace MD_Tech.Controllers
                 var cliente = await mdtecnologiaContext.Clientes.FindAsync(id);
                 if (cliente == null)
                 {
-                    logsApi.Informacion($"Cliente no Encontrado para eliminar con id {id}");
+                    logger.Informacion($"Cliente no Encontrado para eliminar con id {id}");
                     return NotFound();
                 }
                 mdtecnologiaContext.Clientes.Remove(cliente);
                 await mdtecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                logsApi.Advertencia($"Cliente con ID {id} eliminado con éxito");
+                logger.Advertencia($"Cliente con ID {id} eliminado con éxito");
                 return Ok(new { message = "Cliente eliminado con éxito" });
             }
             catch (Exception ex)
             {
                 await transaction.RollbackAsync();
-                logsApi.Excepciones(ex, $"Error al eliminar el cliente con ID {id}");
+                logger.Excepciones(ex, $"Error al eliminar el cliente con ID {id}");
                 return Problem("Ocurrió un error al eliminar el cliente.");
             }
         }
@@ -298,9 +259,7 @@ namespace MD_Tech.Controllers
                 (newCliente.Telefono != null && await mdtecnologiaContext.Clientes.AnyAsync(cliente => cliente.Telefono == newCliente.Telefono)) ||
                 await mdtecnologiaContext.Clientes.AnyAsync(cliente => cliente.Correo == newCliente.Correo) ||
                 usuario.Cliente != null)
-            {
-                return null;
-            }
+            { return null; }
 
             var cliente = new Cliente()
             {
@@ -310,7 +269,6 @@ namespace MD_Tech.Controllers
                 Telefono = newCliente.Telefono,
                 Usuario = usuario.Id
             };
-
             await mdtecnologiaContext.Clientes.AddAsync(cliente);
             await mdtecnologiaContext.SaveChangesAsync();
             return cliente;

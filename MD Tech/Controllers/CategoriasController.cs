@@ -14,12 +14,12 @@ namespace MD_Tech.Controllers
     public class CategoriasController : ControllerBase
     {
         private readonly MdtecnologiaContext context;
-        private readonly LogsApi logger;
+        private readonly LogsApi<CategoriasController> logger;
 
-        public CategoriasController(MdtecnologiaContext context)
+        public CategoriasController(MdtecnologiaContext context, LogsApi<CategoriasController> logger)
         {
             this.context = context;
-            logger = new LogsApi(GetType());
+            this.logger = logger;
         }
 
         [HttpGet]
