@@ -8,7 +8,7 @@ namespace MD_Tech.DTOs
         public Guid? Id { get; set; }
 
         [StringLength(50)]
-        public string Nombre { get; set; } = string.Empty;
+        public string Nombre { get; set; } = null!;
 
         public string? Descripcion { get; set; }
 
