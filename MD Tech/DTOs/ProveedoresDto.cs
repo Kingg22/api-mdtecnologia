@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using MD_Tech.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace MD_Tech.DTOs
 {
@@ -8,7 +9,7 @@ namespace MD_Tech.DTOs
 
         [Required]
         [StringLength(100, MinimumLength = 1)]
-        public required string Nombre { get; set; }
+        public string Nombre { get; set; }
 
         [StringLength(255, MinimumLength = 1)]
         public string? Correo { get; set; }
@@ -17,5 +18,16 @@ namespace MD_Tech.DTOs
         public string? Telefono { get; set; }
 
         public DireccionDto? Direccion { get; set; }
+
+        public ProveedoresDto() { Nombre = string.Empty; }
+
+        public ProveedoresDto(Proveedor proveedor)
+        {
+            Id = proveedor.Id;
+            Nombre = proveedor.Nombre;
+            Correo = proveedor.Correo;
+            Telefono = proveedor.Telefono;
+            Direccion = proveedor.Direccion == null ? null : new DireccionDto(proveedor.Id, proveedor.DireccionNavigation);
+        }
     }
 }
