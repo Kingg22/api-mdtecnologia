@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
+using System.Runtime.InteropServices;
 
 namespace MD_Tech.Controllers
 {
@@ -229,8 +230,101 @@ namespace MD_Tech.Controllers
             }
         }
 
+        [HttpPut("{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Actualiza un proveedor", Description = "Se actualizan todos los campos de un proveedor. No incluye sus relaciones*")]
+        [SwaggerResponse(200, "Proveedor actualizado", typeof(UsuarioDto))]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(404, "Usuario no encontrado")]
+        [SwaggerResponse(500, "Ocurrió un error inesperado")]
+        public async Task<IActionResult> ActualizarProveedor(Guid id, [FromBody] ProveedoresDto changueProveedor)
+        {
+            try
+            {
+                if (id != changueProveedor.Id)
+                {
+                    logApi.Errores("El ID del proveedor no coincide.");
+                    return BadRequest(new { provedor = "El ID del proveedor no coincide." });
+                }
+                var proveedorExistente = await mdtecnologiaContext.Proveedores.FindAsync(id);
+                if (proveedorExistente == null)
+                {
+                    logApi.Errores("Proveeddor no encontrado");
+                    return NotFound(new { provedor = "Proveedor no encontrado." });
+                }
+                if(string.IsNullOrWhiteSpace(changueProveedor.Nombre) )
+                {
+                    logApi.Errores("El nombre es invadilo");
+                    return BadRequest(new {nombre = "Nombre invalido"});
+                }
+
+                if(string.IsNullOrWhiteSpace(changueProveedor.Telefono))
+                {
+                    logApi.Errores("Telefono invalido");
+                    return BadRequest(new { telefono = "Telefono invalido" });
+                }
+                if (await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono== changueProveedor.Telefono))
+                {
+                    logApi.Errores("El Telefono ya esta en uso");
+                    return BadRequest(new { Telefono = "El telefono ya en uso" });
+                }
+                if (string.IsNullOrWhiteSpace(changueProveedor.Correo) || !changueProveedor.Correo.Contains("@") || changueProveedor.Correo.Count(c => c == '@')>1 )
+                {
+                    logApi.Errores("Correo Con formato invalido");
+                    return BadRequest(new { correo = "El correo no tiene el formato adecuado" });
+                }
+                if (await mdtecnologiaContext.Proveedores.AnyAsync(p =>p.Id!=changueProveedor.Id && p.Correo == changueProveedor.Correo))
+                {
+                    logApi.Errores("El correo que se ingreso, se encuentra en uso");
+                    return BadRequest(new { correo="El correo ya esta en uso"});
+                }
+
+                proveedorExistente.Nombre = changueProveedor.Nombre;
+                proveedorExistente.Telefono = changueProveedor.Telefono;
+                proveedorExistente.Correo = changueProveedor.Correo;
+
+                await mdtecnologiaContext.SaveChangesAsync();
+                return Ok(new { proveddor = "Proveedor actualizado exitosamente." });
+            }
+            catch (Exception ex)
+            {
+                logApi.Excepciones(ex, "Error al actualizar el proveedor");
+                return Problem("Error al actualizar el proveedor");
+            }
+        }
+
+        [HttpDelete("{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Eliminar un proveedor", Description = "Se elimina un proveedor de la base de datos")]
+        [SwaggerResponse(204, "Proveedor eliminado")]
+        [SwaggerResponse(404, "Proveedor no encontrado")]
+        public async Task<ActionResult> EliminarProveedor(Guid id)
+        {
+            using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
+            try
+            {
+                var proveedor = await mdtecnologiaContext.Proveedores.FindAsync(id);
+                if (proveedor == null)
+                {
+                    logApi.Depuracion("EL Proveedor a eliminar No Existe");
+                    return NotFound();
+                }
+                mdtecnologiaContext.Proveedores.Remove(proveedor);
+                await mdtecnologiaContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+                logApi.Advertencia($"Un Proveedor con {proveedor.Id} y nombre {proveedor.Nombre} ha sido Eliminado");
+                return Ok(new { message = "Proveedor Eliminado Con éxito" });
+            }
+            catch (Exception ex)
+            {
+                await transaction.RollbackAsync();
+                logApi.Excepciones(ex, "Error en el endpoint EliminarProveedor");
+                return Problem("Error en el endpoint EliminarProveedor");
+            }
+        }
+
         [SwaggerIgnore]
-        private async Task<Proveedor> CrearProveedor([FromBody] ProveedoresDto newProvedor)
+        private async Task<Proveedor> CrearProveedor(ProveedoresDto newProvedor)
         {
             var provedor = new Proveedor()
             {
