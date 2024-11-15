@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using MD_Tech.Contexts;
+using MD_Tech.Context;
 using MD_Tech.Models;
 using Microsoft.AspNetCore.Authorization;
 using MD_Tech.DTOs;
@@ -50,8 +50,7 @@ namespace MD_Tech.Controllers
                 var orderBy = paginacionDto.OrderBy.Split("-");
                 var orderByProperty = orderBy[0];
                 var orderByDirection = orderBy[1].Equals("DESC", StringComparison.OrdinalIgnoreCase);
-
-                var property = typeof(Productos).GetProperty(orderByProperty, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                var property = typeof(Producto).GetProperty(orderByProperty, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
                 if (property != null)
                 {
                     query = orderByDirection
@@ -107,7 +106,7 @@ namespace MD_Tech.Controllers
                     },
                     Request.Scheme
                 ) : null;
-            logs.Depuracion(query.ToQueryString());
+
             return Ok(new
             {
                 count = totalProducts,
@@ -383,7 +382,7 @@ namespace MD_Tech.Controllers
             using var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
             try
             {
-                var productos = new Productos()
+                var productos = new Producto()
                 {
                     Id = productoDto.Id ?? Guid.NewGuid(),
                     Nombre = productoDto.Nombre,

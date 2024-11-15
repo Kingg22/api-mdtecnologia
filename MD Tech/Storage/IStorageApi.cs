@@ -1,7 +1,4 @@
-﻿using Newtonsoft.Json;
-using System.Text.Json.Serialization;
-
-namespace MD_Tech.Storage
+﻿namespace MD_Tech.Storage
 {
     public interface IStorageApi
     {

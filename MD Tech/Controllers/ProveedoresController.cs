@@ -1,8 +1,7 @@
-﻿using MD_Tech.Contexts;
+﻿using MD_Tech.Context;
 using MD_Tech.DTOs;
 using MD_Tech.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Swashbuckle.AspNetCore.Annotations;
@@ -145,7 +144,7 @@ namespace MD_Tech.Controllers
         public async Task<ActionResult<ProveedoresDto>> CrearProvedorDireccion([FromBody] ProveedoresDto proveedorDto)
         {
             var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
-            Direcciones? direccion = null;
+            Direccion? direccion = null;
             try
             {
                 if (string.IsNullOrWhiteSpace(proveedorDto.Nombre))
@@ -189,7 +188,7 @@ namespace MD_Tech.Controllers
                     {
                         return BadRequest(new { direccion_Provincia = "provincia no es válida, intente nuevamente" });
                     }
-                    direccion = new Direcciones()
+                    direccion = new Direccion()
                     {
                         Id = proveedorDto.Direccion.Id ?? Guid.NewGuid(),
                         Provincia = (int)proveedorDto.Direccion.Provincia,
@@ -231,9 +230,9 @@ namespace MD_Tech.Controllers
         }
 
         [SwaggerIgnore]
-        private async Task<Proveedores> CrearProveedor([FromBody] ProveedoresDto newProvedor)
+        private async Task<Proveedor> CrearProveedor([FromBody] ProveedoresDto newProvedor)
         {
-            var provedor = new Proveedores()
+            var provedor = new Proveedor()
             {
                 Correo = newProvedor.Correo,
                 Nombre = newProvedor.Nombre,

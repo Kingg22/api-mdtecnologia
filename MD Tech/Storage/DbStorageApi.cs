@@ -1,4 +1,4 @@
-﻿using MD_Tech.Contexts;
+﻿using MD_Tech.Context;
 using Microsoft.EntityFrameworkCore;
 
 namespace MD_Tech.Storage
