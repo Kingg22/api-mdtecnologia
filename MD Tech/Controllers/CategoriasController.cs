@@ -59,16 +59,17 @@ namespace MD_Tech.Controllers
                 return BadRequest(new { descripcion = "La descripción es inválida. Puede ser null" });
             if (categoriaDto.CategoriaPadre != null)
             {
+                if (categoriaDto.Id != null && categoriaDto.Id == categoriaDto.CategoriaPadre)
+                    return BadRequest(new { categoriaPadre = "La categoría padre no puede ser igual a si misma" });
                 if (!await context.Categorias.AnyAsync(c => c.Id == categoriaDto.CategoriaPadre))
-                {
                     return BadRequest(new { categoriaPadre = "No existe la categoría padre a relacionar" });
-                }
             }
             var categoria = new Categoria
             {
                 Id = categoriaDto.Id ?? Guid.NewGuid(),
                 Nombre = categoriaDto.Nombre,
                 Descripcion = categoriaDto.Descripcion,
+                CategoriaPadre = categoriaDto.CategoriaPadre,
             };
             await context.Categorias.AddAsync(categoria);
             await context.SaveChangesAsync();
@@ -87,15 +88,15 @@ namespace MD_Tech.Controllers
             if (categoria == null)
                 return NotFound();
             if (string.IsNullOrWhiteSpace(categoriaDto.Nombre))
-                return BadRequest(new { mensaje = "El nombre de la categoría es obligatorio" });
+                return BadRequest(new { nombre = "El nombre de la categoría es obligatorio" });
             if (categoriaDto.Descripcion != null && string.IsNullOrWhiteSpace(categoriaDto.Descripcion))
                 return BadRequest(new { descripcion = "La descripción es inválida. Puede ser null" });
             if (categoriaDto.CategoriaPadre != null)
             {
+                if (categoria.Id == categoriaDto.CategoriaPadre)
+                    return BadRequest(new { categoriaPadre = "La categoría padre no puede ser igual a si misma" });
                 if (!await context.Categorias.AnyAsync(c => c.Id == categoriaDto.CategoriaPadre))
-                {
                     return BadRequest(new { categoriaPadre = "No existe la categoría padre a relacionar" });
-                }
             }
             categoria.Nombre = categoriaDto.Nombre;
             categoria.Descripcion = categoriaDto.Descripcion;
@@ -114,7 +115,7 @@ namespace MD_Tech.Controllers
         {
             var categoria = await context.Categorias.FindAsync(id);
             if (categoria == null)
-                return NotFound(new { mensaje = "Categoría no encontrada" });
+                return NotFound();
 
             context.Categorias.Remove(categoria);
             await context.SaveChangesAsync();
