@@ -268,7 +268,7 @@ namespace MD_Tech.Controllers
                     logApi.Errores("El Telefono ya esta en uso");
                     return BadRequest(new { Telefono = "El telefono ya en uso" });
                 }
-                if (string.IsNullOrWhiteSpace(changueProveedor.Correo) || changueProveedor.Correo.Contains("@") || changueProveedor.Correo.Count(c => c == '@')>1 )
+                if (string.IsNullOrWhiteSpace(changueProveedor.Correo) || !changueProveedor.Correo.Contains("@") || changueProveedor.Correo.Count(c => c == '@')>1 )
                 {
                     logApi.Errores("Correo Con formato invalido");
                     return BadRequest(new { correo = "El correo no tiene el formato adecuado" });
