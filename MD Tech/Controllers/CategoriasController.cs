@@ -63,6 +63,8 @@ namespace MD_Tech.Controllers
                     return BadRequest(new { categoriaPadre = "La categoría padre no puede ser igual a si misma" });
                 if (!await context.Categorias.AnyAsync(c => c.Id == categoriaDto.CategoriaPadre))
                     return BadRequest(new { categoriaPadre = "No existe la categoría padre a relacionar" });
+                if (await HasCircularReference(categoriaDto.Id ?? Guid.NewGuid(), categoriaDto.CategoriaPadre))
+                    return BadRequest(new { categoriaPadre = "La relación con esta categoría padre crea una referencia circular" });
             }
             var categoria = new Categoria
             {
@@ -97,6 +99,8 @@ namespace MD_Tech.Controllers
                     return BadRequest(new { categoriaPadre = "La categoría padre no puede ser igual a si misma" });
                 if (!await context.Categorias.AnyAsync(c => c.Id == categoriaDto.CategoriaPadre))
                     return BadRequest(new { categoriaPadre = "No existe la categoría padre a relacionar" });
+                if (await HasCircularReference(categoriaDto.Id ?? Guid.NewGuid(), categoriaDto.CategoriaPadre))
+                    return BadRequest(new { categoriaPadre = "La relación con esta categoría padre crea una referencia circular" });
             }
             categoria.Nombre = categoriaDto.Nombre;
             categoria.Descripcion = categoriaDto.Descripcion;
@@ -122,5 +126,25 @@ namespace MD_Tech.Controllers
             logger.Advertencia($"Se ha eliminado la categoría {categoria.Nombre}");
             return NoContent();
         }
+
+        [SwaggerIgnore]
+        private async Task<bool> HasCircularReference(Guid categoriaId, Guid? categoriaPadreId)
+        {
+            while (categoriaPadreId != null)
+            {
+                if (categoriaPadreId == categoriaId)
+                    return true;
+
+                var parentCategory = await context.Categorias.FindAsync(categoriaPadreId);
+
+                if (parentCategory == null)
+                    break;
+
+                categoriaPadreId = parentCategory.CategoriaPadre;
+            }
+
+            return false;
+        }
+
     }
 }
