@@ -40,4 +40,7 @@ public partial class Proveedor
 
     [InverseProperty("ProveedorNavigation")]
     public virtual ICollection<ProductosProveedor> ProductosProveedores { get; set; } = [];
+
+    [InverseProperty("ProveedorNavigation")]
+    public virtual ICollection<HistorialProducto> HistorialProductos { get; set; } = [];
 }
