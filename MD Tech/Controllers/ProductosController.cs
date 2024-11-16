@@ -251,6 +251,8 @@ namespace MD_Tech.Controllers
                 await transaction.CommitAsync();
                 logger.Informacion($"Se ha actualizado el producto {producto.Id}");
                 await MdTecnologiaContext.Entry(producto).ReloadAsync();
+                await MdTecnologiaContext.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
+                await MdTecnologiaContext.Entry(producto).Collection(p => p.ImagenesProductos).LoadAsync();
                 return Ok(new { producto = new ProductosDto(producto) });
             }
             catch (Exception ex)
@@ -372,6 +374,8 @@ namespace MD_Tech.Controllers
 
                 await transaction.CommitAsync();
                 await MdTecnologiaContext.Entry(productos).ReloadAsync();
+                await MdTecnologiaContext.Entry(productos).Collection(p => p.ProductosProveedores).LoadAsync();
+                await MdTecnologiaContext.Entry(productos).Collection(p => p.ImagenesProductos).LoadAsync();
                 logger.Informacion($"Se ha creado un nuevo producto Id: {productos.Id} Nombre: {productos.Nombre}");
                 return Created(Url.Action(nameof(GetProductos), "Productos", new { id = productos.Id }, Request.Scheme), new { producto = new ProductosDto(productos) });
             }
@@ -469,6 +473,8 @@ namespace MD_Tech.Controllers
                 MdTecnologiaContext.Remove(imagen);
                 await MdTecnologiaContext.SaveChangesAsync();
                 await MdTecnologiaContext.Entry(producto).ReloadAsync();
+                await MdTecnologiaContext.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
+                await MdTecnologiaContext.Entry(producto).Collection(p => p.ImagenesProductos).LoadAsync();
                 logger.Advertencia($"Se ha eliminado una imagen del producto {producto.Id}");
                 return Ok(new ProductosDto(producto));
             }
