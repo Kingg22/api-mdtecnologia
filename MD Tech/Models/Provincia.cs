@@ -12,7 +12,7 @@ public partial class Provincia
 
     [Column("nombre")]
     [StringLength(100)]
-    public string? Nombre { get; set; }
+    public string Nombre { get; set; } = null!;
 
     [InverseProperty("ProvinciaNavigation")]
     public virtual ICollection<Direccion> Direcciones { get; set; } = [];

@@ -15,6 +15,9 @@ public partial class HistorialProducto
     [Column("producto")]
     public Guid? Producto { get; set; }
 
+    [Column("proveedor")]
+    public Guid Proveedor { get; set; }
+
     [Column("precio_base_anterior")]
     [Precision(12, 2)]
     public decimal PrecioBaseAnterior { get; set; }
@@ -29,4 +32,8 @@ public partial class HistorialProducto
     [ForeignKey("Producto")]
     [InverseProperty("HistorialProductos")]
     public virtual Producto? ProductoNavigation { get; set; }
+
+    [ForeignKey("Proveedor")]
+    [InverseProperty("HistorialProductos")]
+    public virtual Proveedor ProveedorNavigation { get; set; } = null!;
 }

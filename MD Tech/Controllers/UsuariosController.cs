@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Swashbuckle.AspNetCore.Annotations;
+using Swashbuckle.AspNetCore.Filters;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -76,6 +77,7 @@ namespace MD_Tech.Controllers
         [HttpPost("register")]
         [SwaggerOperation(Summary = "Crea un usuario", Description = "Agrega un nuevo usuario a la base de datos")]
         [SwaggerResponse(201, "Usuario creado", typeof(UsuarioDto))]
+        [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         public async Task<ActionResult<UsuarioDto>> CreateUser([FromBody] RegisterUserDto register)
         {

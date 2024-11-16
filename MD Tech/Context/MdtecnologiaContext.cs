@@ -121,6 +121,9 @@ public partial class MdtecnologiaContext : DbContext
             entity.HasOne(d => d.ProductoNavigation).WithMany(p => p.HistorialProductos)
                 .OnDelete(DeleteBehavior.Cascade)
                 .HasConstraintName("historial_productos_producto_fkey");
+
+            entity.HasOne(d => d.ProveedorNavigation).WithMany(p => p.HistorialProductos)
+                .HasConstraintName("historial_productos_proveedor_fkey");
         });
 
         modelBuilder.Entity<ImagenesProducto>(entity =>

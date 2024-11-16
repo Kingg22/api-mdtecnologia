@@ -5,7 +5,7 @@
 -- Dumped from database version 16.4
 -- Dumped by pg_dump version 16.4
 
--- Started on 2024-11-14 16:32:36
+-- Started on 2024-11-15 20:02:57
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19,7 +19,7 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 5023 (class 1262 OID 26693)
+-- TOC entry 5028 (class 1262 OID 27151)
 -- Name: mdtecnologia; Type: DATABASE; Schema: -; Owner: -
 --
 
@@ -40,7 +40,22 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 234 (class 1255 OID 26926)
+-- TOC entry 235 (class 1255 OID 27373)
+-- Name: actualizar_timestamp(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.actualizar_timestamp() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$;
+
+
+--
+-- TOC entry 234 (class 1255 OID 27371)
 -- Name: guardar_historial_precio(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -48,8 +63,8 @@ CREATE FUNCTION public.guardar_historial_precio() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-    INSERT INTO historial_productos (producto, precio_base_anterior, precio_total_anterior)
-    VALUES (OLD.producto, OLD.precio, OLD.total);
+    INSERT INTO historial_productos (producto, precio_base_anterior, precio_total_anterior, proveedor)
+    VALUES (OLD.producto, OLD.precio, OLD.total, OLD.proveedor);
     RETURN NEW;
 END;
 $$;
@@ -60,7 +75,7 @@ SET default_tablespace = '';
 SET default_table_access_method = heap;
 
 --
--- TOC entry 224 (class 1259 OID 26800)
+-- TOC entry 224 (class 1259 OID 27245)
 -- Name: categorias; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -73,7 +88,7 @@ CREATE TABLE public.categorias (
 
 
 --
--- TOC entry 216 (class 1259 OID 26705)
+-- TOC entry 216 (class 1259 OID 27163)
 -- Name: clientes; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -90,7 +105,7 @@ CREATE TABLE public.clientes (
 
 
 --
--- TOC entry 230 (class 1259 OID 26867)
+-- TOC entry 230 (class 1259 OID 27312)
 -- Name: contacto_proveedor; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -104,7 +119,7 @@ CREATE TABLE public.contacto_proveedor (
 
 
 --
--- TOC entry 229 (class 1259 OID 26866)
+-- TOC entry 229 (class 1259 OID 27311)
 -- Name: contacto_proveedor_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -118,7 +133,7 @@ CREATE SEQUENCE public.contacto_proveedor_id_seq
 
 
 --
--- TOC entry 5024 (class 0 OID 0)
+-- TOC entry 5029 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: contacto_proveedor_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -127,7 +142,7 @@ ALTER SEQUENCE public.contacto_proveedor_id_seq OWNED BY public.contacto_proveed
 
 
 --
--- TOC entry 227 (class 1259 OID 26839)
+-- TOC entry 227 (class 1259 OID 27284)
 -- Name: detalles_venta; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -150,7 +165,7 @@ CREATE TABLE public.detalles_venta (
 
 
 --
--- TOC entry 222 (class 1259 OID 26757)
+-- TOC entry 222 (class 1259 OID 27215)
 -- Name: direccion_cliente; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -163,7 +178,7 @@ CREATE TABLE public.direccion_cliente (
 
 
 --
--- TOC entry 221 (class 1259 OID 26742)
+-- TOC entry 221 (class 1259 OID 27200)
 -- Name: direcciones; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -176,7 +191,7 @@ CREATE TABLE public.direcciones (
 
 
 --
--- TOC entry 220 (class 1259 OID 26741)
+-- TOC entry 220 (class 1259 OID 27199)
 -- Name: direcciones_provincia_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -190,7 +205,7 @@ CREATE SEQUENCE public.direcciones_provincia_seq
 
 
 --
--- TOC entry 5025 (class 0 OID 0)
+-- TOC entry 5030 (class 0 OID 0)
 -- Dependencies: 220
 -- Name: direcciones_provincia_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -199,13 +214,14 @@ ALTER SEQUENCE public.direcciones_provincia_seq OWNED BY public.direcciones.prov
 
 
 --
--- TOC entry 233 (class 1259 OID 26912)
+-- TOC entry 233 (class 1259 OID 27391)
 -- Name: historial_productos; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.historial_productos (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    producto uuid,
+    producto uuid NOT NULL,
+    proveedor uuid NOT NULL,
     precio_base_anterior numeric(12,2) NOT NULL,
     precio_total_anterior numeric(12,2) NOT NULL,
     fecha_cambio timestamp without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -215,7 +231,7 @@ CREATE TABLE public.historial_productos (
 
 
 --
--- TOC entry 226 (class 1259 OID 26826)
+-- TOC entry 226 (class 1259 OID 27271)
 -- Name: imagenes_productos; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -228,7 +244,7 @@ CREATE TABLE public.imagenes_productos (
 
 
 --
--- TOC entry 232 (class 1259 OID 26898)
+-- TOC entry 232 (class 1259 OID 27343)
 -- Name: ordenes_compra_proveedor; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -243,7 +259,7 @@ CREATE TABLE public.ordenes_compra_proveedor (
 
 
 --
--- TOC entry 225 (class 1259 OID 26813)
+-- TOC entry 225 (class 1259 OID 27258)
 -- Name: productos; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -257,7 +273,7 @@ CREATE TABLE public.productos (
 
 
 --
--- TOC entry 231 (class 1259 OID 26878)
+-- TOC entry 231 (class 1259 OID 27323)
 -- Name: productos_proveedores; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -277,7 +293,7 @@ CREATE TABLE public.productos_proveedores (
 
 
 --
--- TOC entry 228 (class 1259 OID 26851)
+-- TOC entry 228 (class 1259 OID 27296)
 -- Name: proveedores; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -291,18 +307,18 @@ CREATE TABLE public.proveedores (
 
 
 --
--- TOC entry 219 (class 1259 OID 26735)
+-- TOC entry 219 (class 1259 OID 27193)
 -- Name: provincias; Type: TABLE; Schema: public; Owner: -
 --
 
 CREATE TABLE public.provincias (
     id integer NOT NULL,
-    nombre character varying(100)
+    nombre character varying(100) NOT NULL
 );
 
 
 --
--- TOC entry 218 (class 1259 OID 26734)
+-- TOC entry 218 (class 1259 OID 27192)
 -- Name: provincias_id_seq; Type: SEQUENCE; Schema: public; Owner: -
 --
 
@@ -316,7 +332,7 @@ CREATE SEQUENCE public.provincias_id_seq
 
 
 --
--- TOC entry 5026 (class 0 OID 0)
+-- TOC entry 5031 (class 0 OID 0)
 -- Dependencies: 218
 -- Name: provincias_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
 --
@@ -325,7 +341,7 @@ ALTER SEQUENCE public.provincias_id_seq OWNED BY public.provincias.id;
 
 
 --
--- TOC entry 217 (class 1259 OID 26723)
+-- TOC entry 217 (class 1259 OID 27181)
 -- Name: trabajadores; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -347,7 +363,7 @@ CREATE TABLE public.trabajadores (
 
 
 --
--- TOC entry 215 (class 1259 OID 26694)
+-- TOC entry 215 (class 1259 OID 27152)
 -- Name: usuarios; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -364,7 +380,7 @@ CREATE TABLE public.usuarios (
 
 
 --
--- TOC entry 223 (class 1259 OID 26787)
+-- TOC entry 223 (class 1259 OID 27232)
 -- Name: ventas; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -388,7 +404,7 @@ CREATE TABLE public.ventas (
 
 
 --
--- TOC entry 4774 (class 2604 OID 26870)
+-- TOC entry 4775 (class 2604 OID 27315)
 -- Name: contacto_proveedor id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -396,7 +412,7 @@ ALTER TABLE ONLY public.contacto_proveedor ALTER COLUMN id SET DEFAULT nextval('
 
 
 --
--- TOC entry 4761 (class 2604 OID 26746)
+-- TOC entry 4762 (class 2604 OID 27204)
 -- Name: direcciones provincia; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -404,7 +420,7 @@ ALTER TABLE ONLY public.direcciones ALTER COLUMN provincia SET DEFAULT nextval('
 
 
 --
--- TOC entry 4759 (class 2604 OID 26738)
+-- TOC entry 4760 (class 2604 OID 27196)
 -- Name: provincias id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -412,7 +428,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5008 (class 0 OID 26800)
+-- TOC entry 5013 (class 0 OID 27245)
 -- Dependencies: 224
 -- Data for Name: categorias; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -420,7 +436,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5000 (class 0 OID 26705)
+-- TOC entry 5005 (class 0 OID 27163)
 -- Dependencies: 216
 -- Data for Name: clientes; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -428,7 +444,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5014 (class 0 OID 26867)
+-- TOC entry 5019 (class 0 OID 27312)
 -- Dependencies: 230
 -- Data for Name: contacto_proveedor; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -436,7 +452,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5011 (class 0 OID 26839)
+-- TOC entry 5016 (class 0 OID 27284)
 -- Dependencies: 227
 -- Data for Name: detalles_venta; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -444,7 +460,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5006 (class 0 OID 26757)
+-- TOC entry 5011 (class 0 OID 27215)
 -- Dependencies: 222
 -- Data for Name: direccion_cliente; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -452,7 +468,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5005 (class 0 OID 26742)
+-- TOC entry 5010 (class 0 OID 27200)
 -- Dependencies: 221
 -- Data for Name: direcciones; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -460,7 +476,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5017 (class 0 OID 26912)
+-- TOC entry 5022 (class 0 OID 27391)
 -- Dependencies: 233
 -- Data for Name: historial_productos; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -468,7 +484,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5010 (class 0 OID 26826)
+-- TOC entry 5015 (class 0 OID 27271)
 -- Dependencies: 226
 -- Data for Name: imagenes_productos; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -476,7 +492,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5016 (class 0 OID 26898)
+-- TOC entry 5021 (class 0 OID 27343)
 -- Dependencies: 232
 -- Data for Name: ordenes_compra_proveedor; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -484,7 +500,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5009 (class 0 OID 26813)
+-- TOC entry 5014 (class 0 OID 27258)
 -- Dependencies: 225
 -- Data for Name: productos; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -492,7 +508,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5015 (class 0 OID 26878)
+-- TOC entry 5020 (class 0 OID 27323)
 -- Dependencies: 231
 -- Data for Name: productos_proveedores; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -500,7 +516,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5012 (class 0 OID 26851)
+-- TOC entry 5017 (class 0 OID 27296)
 -- Dependencies: 228
 -- Data for Name: proveedores; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -508,7 +524,7 @@ ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.p
 
 
 --
--- TOC entry 5003 (class 0 OID 26735)
+-- TOC entry 5008 (class 0 OID 27193)
 -- Dependencies: 219
 -- Data for Name: provincias; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -533,7 +549,7 @@ INSERT INTO public.provincias VALUES (17, 'Extranjero');
 
 
 --
--- TOC entry 5001 (class 0 OID 26723)
+-- TOC entry 5006 (class 0 OID 27181)
 -- Dependencies: 217
 -- Data for Name: trabajadores; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -541,7 +557,7 @@ INSERT INTO public.provincias VALUES (17, 'Extranjero');
 
 
 --
--- TOC entry 4999 (class 0 OID 26694)
+-- TOC entry 5004 (class 0 OID 27152)
 -- Dependencies: 215
 -- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -549,7 +565,7 @@ INSERT INTO public.provincias VALUES (17, 'Extranjero');
 
 
 --
--- TOC entry 5007 (class 0 OID 26787)
+-- TOC entry 5012 (class 0 OID 27232)
 -- Dependencies: 223
 -- Data for Name: ventas; Type: TABLE DATA; Schema: public; Owner: -
 --
@@ -557,7 +573,7 @@ INSERT INTO public.provincias VALUES (17, 'Extranjero');
 
 
 --
--- TOC entry 5027 (class 0 OID 0)
+-- TOC entry 5032 (class 0 OID 0)
 -- Dependencies: 229
 -- Name: contacto_proveedor_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -566,7 +582,7 @@ SELECT pg_catalog.setval('public.contacto_proveedor_id_seq', 1, false);
 
 
 --
--- TOC entry 5028 (class 0 OID 0)
+-- TOC entry 5033 (class 0 OID 0)
 -- Dependencies: 220
 -- Name: direcciones_provincia_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -575,7 +591,7 @@ SELECT pg_catalog.setval('public.direcciones_provincia_seq', 1, false);
 
 
 --
--- TOC entry 5029 (class 0 OID 0)
+-- TOC entry 5034 (class 0 OID 0)
 -- Dependencies: 218
 -- Name: provincias_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
 --
@@ -584,7 +600,7 @@ SELECT pg_catalog.setval('public.provincias_id_seq', 17, true);
 
 
 --
--- TOC entry 4821 (class 2606 OID 26807)
+-- TOC entry 4822 (class 2606 OID 27252)
 -- Name: categorias categorias_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -593,7 +609,7 @@ ALTER TABLE ONLY public.categorias
 
 
 --
--- TOC entry 4803 (class 2606 OID 26713)
+-- TOC entry 4804 (class 2606 OID 27171)
 -- Name: clientes clientes_correo_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -602,7 +618,7 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4805 (class 2606 OID 26711)
+-- TOC entry 4806 (class 2606 OID 27169)
 -- Name: clientes clientes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -611,7 +627,7 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4807 (class 2606 OID 26715)
+-- TOC entry 4808 (class 2606 OID 27173)
 -- Name: clientes clientes_telefono_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -620,7 +636,7 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4809 (class 2606 OID 26717)
+-- TOC entry 4810 (class 2606 OID 27175)
 -- Name: clientes clientes_usuario_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -629,7 +645,7 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4835 (class 2606 OID 26872)
+-- TOC entry 4836 (class 2606 OID 27317)
 -- Name: contacto_proveedor contacto_proveedor_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -638,7 +654,7 @@ ALTER TABLE ONLY public.contacto_proveedor
 
 
 --
--- TOC entry 4827 (class 2606 OID 26850)
+-- TOC entry 4828 (class 2606 OID 27295)
 -- Name: detalles_venta detalles_venta_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -647,7 +663,7 @@ ALTER TABLE ONLY public.detalles_venta
 
 
 --
--- TOC entry 4817 (class 2606 OID 26763)
+-- TOC entry 4818 (class 2606 OID 27221)
 -- Name: direccion_cliente direccion_cliente_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -656,7 +672,7 @@ ALTER TABLE ONLY public.direccion_cliente
 
 
 --
--- TOC entry 4815 (class 2606 OID 26751)
+-- TOC entry 4816 (class 2606 OID 27209)
 -- Name: direcciones direcciones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -665,7 +681,7 @@ ALTER TABLE ONLY public.direcciones
 
 
 --
--- TOC entry 4841 (class 2606 OID 26920)
+-- TOC entry 4842 (class 2606 OID 27399)
 -- Name: historial_productos historial_productos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -674,7 +690,7 @@ ALTER TABLE ONLY public.historial_productos
 
 
 --
--- TOC entry 4825 (class 2606 OID 26833)
+-- TOC entry 4826 (class 2606 OID 27278)
 -- Name: imagenes_productos imagenes_productos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -683,7 +699,7 @@ ALTER TABLE ONLY public.imagenes_productos
 
 
 --
--- TOC entry 4839 (class 2606 OID 26906)
+-- TOC entry 4840 (class 2606 OID 27351)
 -- Name: ordenes_compra_proveedor ordenes_compra_proveedor_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -692,7 +708,7 @@ ALTER TABLE ONLY public.ordenes_compra_proveedor
 
 
 --
--- TOC entry 4823 (class 2606 OID 26820)
+-- TOC entry 4824 (class 2606 OID 27265)
 -- Name: productos productos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -701,7 +717,7 @@ ALTER TABLE ONLY public.productos
 
 
 --
--- TOC entry 4837 (class 2606 OID 26887)
+-- TOC entry 4838 (class 2606 OID 27332)
 -- Name: productos_proveedores productos_proveedores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -710,7 +726,7 @@ ALTER TABLE ONLY public.productos_proveedores
 
 
 --
--- TOC entry 4829 (class 2606 OID 26858)
+-- TOC entry 4830 (class 2606 OID 27303)
 -- Name: proveedores proveedores_correo_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -719,7 +735,7 @@ ALTER TABLE ONLY public.proveedores
 
 
 --
--- TOC entry 4831 (class 2606 OID 26856)
+-- TOC entry 4832 (class 2606 OID 27301)
 -- Name: proveedores proveedores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -728,7 +744,7 @@ ALTER TABLE ONLY public.proveedores
 
 
 --
--- TOC entry 4833 (class 2606 OID 26860)
+-- TOC entry 4834 (class 2606 OID 27305)
 -- Name: proveedores proveedores_telefono_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -737,7 +753,7 @@ ALTER TABLE ONLY public.proveedores
 
 
 --
--- TOC entry 4813 (class 2606 OID 26740)
+-- TOC entry 4814 (class 2606 OID 27198)
 -- Name: provincias provincias_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -746,7 +762,7 @@ ALTER TABLE ONLY public.provincias
 
 
 --
--- TOC entry 4811 (class 2606 OID 26733)
+-- TOC entry 4812 (class 2606 OID 27191)
 -- Name: trabajadores trabajadores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -755,7 +771,7 @@ ALTER TABLE ONLY public.trabajadores
 
 
 --
--- TOC entry 4799 (class 2606 OID 26702)
+-- TOC entry 4800 (class 2606 OID 27160)
 -- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -764,7 +780,7 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 4801 (class 2606 OID 26704)
+-- TOC entry 4802 (class 2606 OID 27162)
 -- Name: usuarios usuarios_username_key; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -773,7 +789,7 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 4819 (class 2606 OID 26799)
+-- TOC entry 4820 (class 2606 OID 27244)
 -- Name: ventas ventas_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -782,7 +798,15 @@ ALTER TABLE ONLY public.ventas
 
 
 --
--- TOC entry 4855 (class 2620 OID 26927)
+-- TOC entry 4858 (class 2620 OID 27375)
+-- Name: clientes clientes_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER clientes_actualizar_updated_at BEFORE UPDATE ON public.clientes FOR EACH ROW EXECUTE FUNCTION public.actualizar_timestamp();
+
+
+--
+-- TOC entry 4860 (class 2620 OID 27372)
 -- Name: productos_proveedores tr_guardar_historial_precio; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -790,7 +814,23 @@ CREATE TRIGGER tr_guardar_historial_precio BEFORE UPDATE OF total ON public.prod
 
 
 --
--- TOC entry 4846 (class 2606 OID 26808)
+-- TOC entry 4859 (class 2620 OID 27376)
+-- Name: trabajadores trabajadores_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trabajadores_actualizar_updated_at BEFORE UPDATE ON public.trabajadores FOR EACH ROW EXECUTE FUNCTION public.actualizar_timestamp();
+
+
+--
+-- TOC entry 4857 (class 2620 OID 27374)
+-- Name: usuarios usuarios_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER usuarios_actualizar_updated_at BEFORE UPDATE ON public.usuarios FOR EACH ROW EXECUTE FUNCTION public.actualizar_timestamp();
+
+
+--
+-- TOC entry 4847 (class 2606 OID 27253)
 -- Name: categorias categorias_categoria_padre_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -799,7 +839,7 @@ ALTER TABLE ONLY public.categorias
 
 
 --
--- TOC entry 4842 (class 2606 OID 26718)
+-- TOC entry 4843 (class 2606 OID 27176)
 -- Name: clientes clientes_usuario_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -808,7 +848,7 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4850 (class 2606 OID 26873)
+-- TOC entry 4851 (class 2606 OID 27318)
 -- Name: contacto_proveedor contacto_proveedor_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -817,7 +857,7 @@ ALTER TABLE ONLY public.contacto_proveedor
 
 
 --
--- TOC entry 4844 (class 2606 OID 26764)
+-- TOC entry 4845 (class 2606 OID 27222)
 -- Name: direccion_cliente direccion_cliente_cliente_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -826,7 +866,7 @@ ALTER TABLE ONLY public.direccion_cliente
 
 
 --
--- TOC entry 4845 (class 2606 OID 26769)
+-- TOC entry 4846 (class 2606 OID 27227)
 -- Name: direccion_cliente direccion_cliente_direccion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -835,7 +875,7 @@ ALTER TABLE ONLY public.direccion_cliente
 
 
 --
--- TOC entry 4843 (class 2606 OID 26752)
+-- TOC entry 4844 (class 2606 OID 27210)
 -- Name: direcciones direcciones_provincia_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -844,25 +884,34 @@ ALTER TABLE ONLY public.direcciones
 
 
 --
--- TOC entry 4854 (class 2606 OID 26921)
+-- TOC entry 4855 (class 2606 OID 27400)
 -- Name: historial_productos historial_productos_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.historial_productos
-    ADD CONSTRAINT historial_productos_producto_fkey FOREIGN KEY (producto) REFERENCES public.productos(id) ON DELETE CASCADE;
+    ADD CONSTRAINT historial_productos_producto_fkey FOREIGN KEY (producto) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE CASCADE;
 
 
 --
--- TOC entry 4848 (class 2606 OID 26834)
+-- TOC entry 4856 (class 2606 OID 27405)
+-- Name: historial_productos historial_productos_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.historial_productos
+    ADD CONSTRAINT historial_productos_proveedor_fkey FOREIGN KEY (proveedor) REFERENCES public.proveedores(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4849 (class 2606 OID 27279)
 -- Name: imagenes_productos imagenes_productos_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.imagenes_productos
-    ADD CONSTRAINT imagenes_productos_producto_fkey FOREIGN KEY (producto) REFERENCES public.productos(id) ON UPDATE CASCADE;
+    ADD CONSTRAINT imagenes_productos_producto_fkey FOREIGN KEY (producto) REFERENCES public.productos(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
--- TOC entry 4853 (class 2606 OID 26907)
+-- TOC entry 4854 (class 2606 OID 27352)
 -- Name: ordenes_compra_proveedor ordenes_compra_proveedor_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -871,7 +920,7 @@ ALTER TABLE ONLY public.ordenes_compra_proveedor
 
 
 --
--- TOC entry 4847 (class 2606 OID 26821)
+-- TOC entry 4848 (class 2606 OID 27266)
 -- Name: productos productos_categoria_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -880,7 +929,7 @@ ALTER TABLE ONLY public.productos
 
 
 --
--- TOC entry 4851 (class 2606 OID 26888)
+-- TOC entry 4852 (class 2606 OID 27333)
 -- Name: productos_proveedores productos_proveedores_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -889,7 +938,7 @@ ALTER TABLE ONLY public.productos_proveedores
 
 
 --
--- TOC entry 4852 (class 2606 OID 26893)
+-- TOC entry 4853 (class 2606 OID 27338)
 -- Name: productos_proveedores productos_proveedores_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -898,15 +947,15 @@ ALTER TABLE ONLY public.productos_proveedores
 
 
 --
--- TOC entry 4849 (class 2606 OID 26861)
+-- TOC entry 4850 (class 2606 OID 27306)
 -- Name: proveedores proveedores_direccion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.proveedores
-    ADD CONSTRAINT proveedores_direccion_fkey FOREIGN KEY (direccion) REFERENCES public.direcciones(id) ON UPDATE CASCADE;
+    ADD CONSTRAINT proveedores_direccion_fkey FOREIGN KEY (direccion) REFERENCES public.direcciones(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
--- Completed on 2024-11-14 16:32:36
+-- Completed on 2024-11-15 20:02:57
 
 --
 -- PostgreSQL database dump complete
