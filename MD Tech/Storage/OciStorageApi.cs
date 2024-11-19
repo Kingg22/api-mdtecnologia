@@ -33,7 +33,6 @@ namespace MD_Tech.Storage
             if (string.IsNullOrWhiteSpace(objectName))
             {
                 logger.Advertencia("Se ha rechazado búsqueda de objeto en OCI por nombre inválido");
-                logger.Advertencia("Se ha rechazado búsqueda de objeto en OCI por nombre inválido");
                 return null;
             }
             using var client = new ObjectStorageClient(Provider, new());
@@ -48,7 +47,6 @@ namespace MD_Tech.Storage
             {
                 var response = await client.GetObject(getObjectRequest);
                 logger.Informacion($"Obtener objeto exitoso ETAG: {response.ETag}");
-                logger.Informacion($"Obtener objeto exitoso ETAG: {response.ETag}");
                 return new StorageApiDto()
                 {
                     Name = objectName,
@@ -60,7 +58,6 @@ namespace MD_Tech.Storage
             }
             catch (Exception ex)
             {
-                logger.Excepciones(ex, "Ha ocurrido un error al obtener de OCI");
                 logger.Excepciones(ex, "Ha ocurrido un error al obtener de OCI");
             }
             return null;
