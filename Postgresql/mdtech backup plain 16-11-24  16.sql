@@ -5,7 +5,7 @@
 -- Dumped from database version 16.4
 -- Dumped by pg_dump version 16.4
 
--- Started on 2024-11-15 20:02:57
+-- Started on 2024-11-16 16:13:25
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19,29 +19,8 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- TOC entry 5028 (class 1262 OID 27151)
--- Name: mdtecnologia; Type: DATABASE; Schema: -; Owner: -
---
-
-CREATE DATABASE mdtecnologia WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'Spanish_Panama.1252';
-
-
-\connect mdtecnologia
-
-SET statement_timeout = 0;
-SET lock_timeout = 0;
-SET idle_in_transaction_session_timeout = 0;
-SET client_encoding = 'UTF8';
-SET standard_conforming_strings = on;
-SELECT pg_catalog.set_config('search_path', '', false);
-SET check_function_bodies = false;
-SET xmloption = content;
-SET client_min_messages = warning;
-SET row_security = off;
-
---
--- TOC entry 235 (class 1255 OID 27373)
--- Name: actualizar_timestamp(); Type: FUNCTION; Schema: public; Owner: -
+-- TOC entry 235 (class 1255 OID 18019)
+-- Name: actualizar_timestamp(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
 CREATE FUNCTION public.actualizar_timestamp() RETURNS trigger
@@ -54,9 +33,11 @@ END;
 $$;
 
 
+ALTER FUNCTION public.actualizar_timestamp() OWNER TO postgres;
+
 --
--- TOC entry 234 (class 1255 OID 27371)
--- Name: guardar_historial_precio(); Type: FUNCTION; Schema: public; Owner: -
+-- TOC entry 234 (class 1255 OID 18017)
+-- Name: guardar_historial_precio(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
 CREATE FUNCTION public.guardar_historial_precio() RETURNS trigger
@@ -70,13 +51,15 @@ END;
 $$;
 
 
+ALTER FUNCTION public.guardar_historial_precio() OWNER TO postgres;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- TOC entry 224 (class 1259 OID 27245)
--- Name: categorias; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 224 (class 1259 OID 17881)
+-- Name: categorias; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.categorias (
@@ -87,9 +70,11 @@ CREATE TABLE public.categorias (
 );
 
 
+ALTER TABLE public.categorias OWNER TO postgres;
+
 --
--- TOC entry 216 (class 1259 OID 27163)
--- Name: clientes; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 216 (class 1259 OID 17799)
+-- Name: clientes; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.clientes (
@@ -104,9 +89,11 @@ CREATE TABLE public.clientes (
 );
 
 
+ALTER TABLE public.clientes OWNER TO postgres;
+
 --
--- TOC entry 230 (class 1259 OID 27312)
--- Name: contacto_proveedor; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 230 (class 1259 OID 17953)
+-- Name: contacto_proveedor; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.contacto_proveedor (
@@ -118,9 +105,11 @@ CREATE TABLE public.contacto_proveedor (
 );
 
 
+ALTER TABLE public.contacto_proveedor OWNER TO postgres;
+
 --
--- TOC entry 229 (class 1259 OID 27311)
--- Name: contacto_proveedor_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- TOC entry 229 (class 1259 OID 17952)
+-- Name: contacto_proveedor_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
 CREATE SEQUENCE public.contacto_proveedor_id_seq
@@ -132,18 +121,20 @@ CREATE SEQUENCE public.contacto_proveedor_id_seq
     CACHE 1;
 
 
+ALTER SEQUENCE public.contacto_proveedor_id_seq OWNER TO postgres;
+
 --
--- TOC entry 5029 (class 0 OID 0)
+-- TOC entry 4975 (class 0 OID 0)
 -- Dependencies: 229
--- Name: contacto_proveedor_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: contacto_proveedor_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
 ALTER SEQUENCE public.contacto_proveedor_id_seq OWNED BY public.contacto_proveedor.id;
 
 
 --
--- TOC entry 227 (class 1259 OID 27284)
--- Name: detalles_venta; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 227 (class 1259 OID 17920)
+-- Name: detalles_venta; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.detalles_venta (
@@ -164,9 +155,11 @@ CREATE TABLE public.detalles_venta (
 );
 
 
+ALTER TABLE public.detalles_venta OWNER TO postgres;
+
 --
--- TOC entry 222 (class 1259 OID 27215)
--- Name: direccion_cliente; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 222 (class 1259 OID 17851)
+-- Name: direccion_cliente; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.direccion_cliente (
@@ -177,9 +170,11 @@ CREATE TABLE public.direccion_cliente (
 );
 
 
+ALTER TABLE public.direccion_cliente OWNER TO postgres;
+
 --
--- TOC entry 221 (class 1259 OID 27200)
--- Name: direcciones; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 221 (class 1259 OID 17836)
+-- Name: direcciones; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.direcciones (
@@ -190,9 +185,11 @@ CREATE TABLE public.direcciones (
 );
 
 
+ALTER TABLE public.direcciones OWNER TO postgres;
+
 --
--- TOC entry 220 (class 1259 OID 27199)
--- Name: direcciones_provincia_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- TOC entry 220 (class 1259 OID 17835)
+-- Name: direcciones_provincia_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
 CREATE SEQUENCE public.direcciones_provincia_seq
@@ -204,18 +201,20 @@ CREATE SEQUENCE public.direcciones_provincia_seq
     CACHE 1;
 
 
+ALTER SEQUENCE public.direcciones_provincia_seq OWNER TO postgres;
+
 --
--- TOC entry 5030 (class 0 OID 0)
+-- TOC entry 4976 (class 0 OID 0)
 -- Dependencies: 220
--- Name: direcciones_provincia_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: direcciones_provincia_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
 ALTER SEQUENCE public.direcciones_provincia_seq OWNED BY public.direcciones.provincia;
 
 
 --
--- TOC entry 233 (class 1259 OID 27391)
--- Name: historial_productos; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 233 (class 1259 OID 17998)
+-- Name: historial_productos; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.historial_productos (
@@ -230,9 +229,11 @@ CREATE TABLE public.historial_productos (
 );
 
 
+ALTER TABLE public.historial_productos OWNER TO postgres;
+
 --
--- TOC entry 226 (class 1259 OID 27271)
--- Name: imagenes_productos; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 226 (class 1259 OID 17907)
+-- Name: imagenes_productos; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.imagenes_productos (
@@ -243,9 +244,11 @@ CREATE TABLE public.imagenes_productos (
 );
 
 
+ALTER TABLE public.imagenes_productos OWNER TO postgres;
+
 --
--- TOC entry 232 (class 1259 OID 27343)
--- Name: ordenes_compra_proveedor; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 232 (class 1259 OID 17984)
+-- Name: ordenes_compra_proveedor; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.ordenes_compra_proveedor (
@@ -258,9 +261,11 @@ CREATE TABLE public.ordenes_compra_proveedor (
 );
 
 
+ALTER TABLE public.ordenes_compra_proveedor OWNER TO postgres;
+
 --
--- TOC entry 225 (class 1259 OID 27258)
--- Name: productos; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 225 (class 1259 OID 17894)
+-- Name: productos; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.productos (
@@ -272,9 +277,11 @@ CREATE TABLE public.productos (
 );
 
 
+ALTER TABLE public.productos OWNER TO postgres;
+
 --
--- TOC entry 231 (class 1259 OID 27323)
--- Name: productos_proveedores; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 231 (class 1259 OID 17964)
+-- Name: productos_proveedores; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.productos_proveedores (
@@ -292,9 +299,11 @@ CREATE TABLE public.productos_proveedores (
 );
 
 
+ALTER TABLE public.productos_proveedores OWNER TO postgres;
+
 --
--- TOC entry 228 (class 1259 OID 27296)
--- Name: proveedores; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 228 (class 1259 OID 17937)
+-- Name: proveedores; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.proveedores (
@@ -306,9 +315,11 @@ CREATE TABLE public.proveedores (
 );
 
 
+ALTER TABLE public.proveedores OWNER TO postgres;
+
 --
--- TOC entry 219 (class 1259 OID 27193)
--- Name: provincias; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 219 (class 1259 OID 17829)
+-- Name: provincias; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.provincias (
@@ -317,9 +328,11 @@ CREATE TABLE public.provincias (
 );
 
 
+ALTER TABLE public.provincias OWNER TO postgres;
+
 --
--- TOC entry 218 (class 1259 OID 27192)
--- Name: provincias_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+-- TOC entry 218 (class 1259 OID 17828)
+-- Name: provincias_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
 --
 
 CREATE SEQUENCE public.provincias_id_seq
@@ -331,18 +344,20 @@ CREATE SEQUENCE public.provincias_id_seq
     CACHE 1;
 
 
+ALTER SEQUENCE public.provincias_id_seq OWNER TO postgres;
+
 --
--- TOC entry 5031 (class 0 OID 0)
+-- TOC entry 4977 (class 0 OID 0)
 -- Dependencies: 218
--- Name: provincias_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+-- Name: provincias_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
 --
 
 ALTER SEQUENCE public.provincias_id_seq OWNED BY public.provincias.id;
 
 
 --
--- TOC entry 217 (class 1259 OID 27181)
--- Name: trabajadores; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 217 (class 1259 OID 17817)
+-- Name: trabajadores; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.trabajadores (
@@ -362,9 +377,11 @@ CREATE TABLE public.trabajadores (
 );
 
 
+ALTER TABLE public.trabajadores OWNER TO postgres;
+
 --
--- TOC entry 215 (class 1259 OID 27152)
--- Name: usuarios; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 215 (class 1259 OID 17788)
+-- Name: usuarios; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.usuarios (
@@ -379,9 +396,11 @@ CREATE TABLE public.usuarios (
 );
 
 
+ALTER TABLE public.usuarios OWNER TO postgres;
+
 --
--- TOC entry 223 (class 1259 OID 27232)
--- Name: ventas; Type: TABLE; Schema: public; Owner: -
+-- TOC entry 223 (class 1259 OID 17868)
+-- Name: ventas; Type: TABLE; Schema: public; Owner: postgres
 --
 
 CREATE TABLE public.ventas (
@@ -403,205 +422,239 @@ CREATE TABLE public.ventas (
 );
 
 
+ALTER TABLE public.ventas OWNER TO postgres;
+
 --
--- TOC entry 4775 (class 2604 OID 27315)
--- Name: contacto_proveedor id; Type: DEFAULT; Schema: public; Owner: -
+-- TOC entry 4721 (class 2604 OID 17956)
+-- Name: contacto_proveedor id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.contacto_proveedor ALTER COLUMN id SET DEFAULT nextval('public.contacto_proveedor_id_seq'::regclass);
 
 
 --
--- TOC entry 4762 (class 2604 OID 27204)
--- Name: direcciones provincia; Type: DEFAULT; Schema: public; Owner: -
+-- TOC entry 4708 (class 2604 OID 17840)
+-- Name: direcciones provincia; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.direcciones ALTER COLUMN provincia SET DEFAULT nextval('public.direcciones_provincia_seq'::regclass);
 
 
 --
--- TOC entry 4760 (class 2604 OID 27196)
--- Name: provincias id; Type: DEFAULT; Schema: public; Owner: -
+-- TOC entry 4706 (class 2604 OID 17832)
+-- Name: provincias id; Type: DEFAULT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.provincias ALTER COLUMN id SET DEFAULT nextval('public.provincias_id_seq'::regclass);
 
 
 --
--- TOC entry 5013 (class 0 OID 27245)
+-- TOC entry 4960 (class 0 OID 17881)
 -- Dependencies: 224
--- Data for Name: categorias; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: categorias; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.categorias (id, nombre, descripcion, categoria_padre) FROM stdin;
+\.
 
 
 --
--- TOC entry 5005 (class 0 OID 27163)
+-- TOC entry 4952 (class 0 OID 17799)
 -- Dependencies: 216
--- Data for Name: clientes; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: clientes; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.clientes (id, nombre, apellido, correo, telefono, usuario, created_at, updated_at) FROM stdin;
+\.
 
 
 --
--- TOC entry 5019 (class 0 OID 27312)
+-- TOC entry 4966 (class 0 OID 17953)
 -- Dependencies: 230
--- Data for Name: contacto_proveedor; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: contacto_proveedor; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.contacto_proveedor (id, nombre, correo, telefono, proveedor) FROM stdin;
+\.
 
 
 --
--- TOC entry 5016 (class 0 OID 27284)
+-- TOC entry 4963 (class 0 OID 17920)
 -- Dependencies: 227
--- Data for Name: detalles_venta; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: detalles_venta; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.detalles_venta (id, cantidad, precio_unitario, subtotal, descuento, impuesto, total, producto, venta) FROM stdin;
+\.
 
 
 --
--- TOC entry 5011 (class 0 OID 27215)
+-- TOC entry 4958 (class 0 OID 17851)
 -- Dependencies: 222
--- Data for Name: direccion_cliente; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: direccion_cliente; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.direccion_cliente (id, cliente, direccion, created_at) FROM stdin;
+\.
 
 
 --
--- TOC entry 5010 (class 0 OID 27200)
+-- TOC entry 4957 (class 0 OID 17836)
 -- Dependencies: 221
--- Data for Name: direcciones; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: direcciones; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.direcciones (id, descripcion, provincia, created_at) FROM stdin;
+\.
 
 
 --
--- TOC entry 5022 (class 0 OID 27391)
+-- TOC entry 4969 (class 0 OID 17998)
 -- Dependencies: 233
--- Data for Name: historial_productos; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: historial_productos; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.historial_productos (id, producto, proveedor, precio_base_anterior, precio_total_anterior, fecha_cambio) FROM stdin;
+\.
 
 
 --
--- TOC entry 5015 (class 0 OID 27271)
+-- TOC entry 4962 (class 0 OID 17907)
 -- Dependencies: 226
--- Data for Name: imagenes_productos; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: imagenes_productos; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.imagenes_productos (id, descripcion, url, producto) FROM stdin;
+\.
 
 
 --
--- TOC entry 5021 (class 0 OID 27343)
+-- TOC entry 4968 (class 0 OID 17984)
 -- Dependencies: 232
--- Data for Name: ordenes_compra_proveedor; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: ordenes_compra_proveedor; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.ordenes_compra_proveedor (id, proveedor, id_orden, fecha_estimada_entrega, estado) FROM stdin;
+\.
 
 
 --
--- TOC entry 5014 (class 0 OID 27258)
+-- TOC entry 4961 (class 0 OID 17894)
 -- Dependencies: 225
--- Data for Name: productos; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: productos; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.productos (id, nombre, marca, descripcion, categoria) FROM stdin;
+\.
 
 
 --
--- TOC entry 5020 (class 0 OID 27323)
+-- TOC entry 4967 (class 0 OID 17964)
 -- Dependencies: 231
--- Data for Name: productos_proveedores; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: productos_proveedores; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.productos_proveedores (id, producto, proveedor, precio, impuesto, total, stock, fecha_actualizado) FROM stdin;
+\.
 
 
 --
--- TOC entry 5017 (class 0 OID 27296)
+-- TOC entry 4964 (class 0 OID 17937)
 -- Dependencies: 228
--- Data for Name: proveedores; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: proveedores; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.proveedores (id, nombre, direccion, correo, telefono) FROM stdin;
+\.
 
 
 --
--- TOC entry 5008 (class 0 OID 27193)
+-- TOC entry 4955 (class 0 OID 17829)
 -- Dependencies: 219
--- Data for Name: provincias; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: provincias; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
-INSERT INTO public.provincias VALUES (1, 'Bocas del Toro');
-INSERT INTO public.provincias VALUES (2, 'Coclé');
-INSERT INTO public.provincias VALUES (3, 'Colón');
-INSERT INTO public.provincias VALUES (4, 'Chiriquí');
-INSERT INTO public.provincias VALUES (5, 'Darién');
-INSERT INTO public.provincias VALUES (6, 'Herrera');
-INSERT INTO public.provincias VALUES (7, 'Los Santos');
-INSERT INTO public.provincias VALUES (8, 'Panamá');
-INSERT INTO public.provincias VALUES (9, 'Veraguas');
-INSERT INTO public.provincias VALUES (10, 'Guna Yala');
-INSERT INTO public.provincias VALUES (11, 'Emberá-Wounaan');
-INSERT INTO public.provincias VALUES (12, 'Ngäbe-Buglé');
-INSERT INTO public.provincias VALUES (13, 'Panamá Oeste');
-INSERT INTO public.provincias VALUES (14, 'Naso Tjër Di');
-INSERT INTO public.provincias VALUES (15, 'Guna de Madugandí');
-INSERT INTO public.provincias VALUES (16, 'Guna de Wargandí');
-INSERT INTO public.provincias VALUES (17, 'Extranjero');
+COPY public.provincias (id, nombre) FROM stdin;
+1	Bocas del Toro
+2	Coclé
+3	Colón
+4	Chiriquí
+5	Darién
+6	Herrera
+7	Los Santos
+8	Panamá
+9	Veraguas
+10	Guna Yala
+11	Emberá-Wounaan
+12	Ngäbe-Buglé
+13	Panamá Oeste
+14	Naso Tjër Di
+15	Guna de Madugandí
+16	Guna de Wargandí
+17	Extranjero
+\.
 
 
 --
--- TOC entry 5006 (class 0 OID 27181)
+-- TOC entry 4953 (class 0 OID 17817)
 -- Dependencies: 217
--- Data for Name: trabajadores; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: trabajadores; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.trabajadores (id, nombre, apellido, correo, telefono, usuario, cargo, fecha_ingreso, estado, salario, created_at, updated_at) FROM stdin;
+\.
 
 
 --
--- TOC entry 5004 (class 0 OID 27152)
+-- TOC entry 4951 (class 0 OID 17788)
 -- Dependencies: 215
--- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: usuarios; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.usuarios (id, username, password, disabled, rol, created_at, updated_at) FROM stdin;
+\.
 
 
 --
--- TOC entry 5012 (class 0 OID 27232)
+-- TOC entry 4959 (class 0 OID 17868)
 -- Dependencies: 223
--- Data for Name: ventas; Type: TABLE DATA; Schema: public; Owner: -
+-- Data for Name: ventas; Type: TABLE DATA; Schema: public; Owner: postgres
 --
 
+COPY public.ventas (id, fecha, estado, cantidad_total_productos, subtotal, descuento, impuesto, total, direccion_entrega, cliente) FROM stdin;
+\.
 
 
 --
--- TOC entry 5032 (class 0 OID 0)
+-- TOC entry 4978 (class 0 OID 0)
 -- Dependencies: 229
--- Name: contacto_proveedor_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: contacto_proveedor_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
 SELECT pg_catalog.setval('public.contacto_proveedor_id_seq', 1, false);
 
 
 --
--- TOC entry 5033 (class 0 OID 0)
+-- TOC entry 4979 (class 0 OID 0)
 -- Dependencies: 220
--- Name: direcciones_provincia_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: direcciones_provincia_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
 SELECT pg_catalog.setval('public.direcciones_provincia_seq', 1, false);
 
 
 --
--- TOC entry 5034 (class 0 OID 0)
+-- TOC entry 4980 (class 0 OID 0)
 -- Dependencies: 218
--- Name: provincias_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+-- Name: provincias_id_seq; Type: SEQUENCE SET; Schema: public; Owner: postgres
 --
 
 SELECT pg_catalog.setval('public.provincias_id_seq', 17, true);
 
 
 --
--- TOC entry 4822 (class 2606 OID 27252)
--- Name: categorias categorias_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4768 (class 2606 OID 17888)
+-- Name: categorias categorias_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.categorias
@@ -609,8 +662,8 @@ ALTER TABLE ONLY public.categorias
 
 
 --
--- TOC entry 4804 (class 2606 OID 27171)
--- Name: clientes clientes_correo_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4750 (class 2606 OID 17807)
+-- Name: clientes clientes_correo_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.clientes
@@ -618,8 +671,8 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4806 (class 2606 OID 27169)
--- Name: clientes clientes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4752 (class 2606 OID 17805)
+-- Name: clientes clientes_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.clientes
@@ -627,8 +680,8 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4808 (class 2606 OID 27173)
--- Name: clientes clientes_telefono_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4754 (class 2606 OID 17809)
+-- Name: clientes clientes_telefono_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.clientes
@@ -636,8 +689,8 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4810 (class 2606 OID 27175)
--- Name: clientes clientes_usuario_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4756 (class 2606 OID 17811)
+-- Name: clientes clientes_usuario_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.clientes
@@ -645,8 +698,8 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4836 (class 2606 OID 27317)
--- Name: contacto_proveedor contacto_proveedor_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4782 (class 2606 OID 17958)
+-- Name: contacto_proveedor contacto_proveedor_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.contacto_proveedor
@@ -654,8 +707,8 @@ ALTER TABLE ONLY public.contacto_proveedor
 
 
 --
--- TOC entry 4828 (class 2606 OID 27295)
--- Name: detalles_venta detalles_venta_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4774 (class 2606 OID 17931)
+-- Name: detalles_venta detalles_venta_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.detalles_venta
@@ -663,8 +716,8 @@ ALTER TABLE ONLY public.detalles_venta
 
 
 --
--- TOC entry 4818 (class 2606 OID 27221)
--- Name: direccion_cliente direccion_cliente_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4764 (class 2606 OID 17857)
+-- Name: direccion_cliente direccion_cliente_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.direccion_cliente
@@ -672,8 +725,8 @@ ALTER TABLE ONLY public.direccion_cliente
 
 
 --
--- TOC entry 4816 (class 2606 OID 27209)
--- Name: direcciones direcciones_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4762 (class 2606 OID 17845)
+-- Name: direcciones direcciones_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.direcciones
@@ -681,8 +734,8 @@ ALTER TABLE ONLY public.direcciones
 
 
 --
--- TOC entry 4842 (class 2606 OID 27399)
--- Name: historial_productos historial_productos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4788 (class 2606 OID 18006)
+-- Name: historial_productos historial_productos_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.historial_productos
@@ -690,8 +743,8 @@ ALTER TABLE ONLY public.historial_productos
 
 
 --
--- TOC entry 4826 (class 2606 OID 27278)
--- Name: imagenes_productos imagenes_productos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4772 (class 2606 OID 17914)
+-- Name: imagenes_productos imagenes_productos_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.imagenes_productos
@@ -699,8 +752,8 @@ ALTER TABLE ONLY public.imagenes_productos
 
 
 --
--- TOC entry 4840 (class 2606 OID 27351)
--- Name: ordenes_compra_proveedor ordenes_compra_proveedor_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4786 (class 2606 OID 17992)
+-- Name: ordenes_compra_proveedor ordenes_compra_proveedor_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.ordenes_compra_proveedor
@@ -708,8 +761,8 @@ ALTER TABLE ONLY public.ordenes_compra_proveedor
 
 
 --
--- TOC entry 4824 (class 2606 OID 27265)
--- Name: productos productos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4770 (class 2606 OID 17901)
+-- Name: productos productos_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.productos
@@ -717,8 +770,8 @@ ALTER TABLE ONLY public.productos
 
 
 --
--- TOC entry 4838 (class 2606 OID 27332)
--- Name: productos_proveedores productos_proveedores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4784 (class 2606 OID 17973)
+-- Name: productos_proveedores productos_proveedores_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.productos_proveedores
@@ -726,8 +779,8 @@ ALTER TABLE ONLY public.productos_proveedores
 
 
 --
--- TOC entry 4830 (class 2606 OID 27303)
--- Name: proveedores proveedores_correo_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4776 (class 2606 OID 17944)
+-- Name: proveedores proveedores_correo_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.proveedores
@@ -735,8 +788,8 @@ ALTER TABLE ONLY public.proveedores
 
 
 --
--- TOC entry 4832 (class 2606 OID 27301)
--- Name: proveedores proveedores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4778 (class 2606 OID 17942)
+-- Name: proveedores proveedores_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.proveedores
@@ -744,8 +797,8 @@ ALTER TABLE ONLY public.proveedores
 
 
 --
--- TOC entry 4834 (class 2606 OID 27305)
--- Name: proveedores proveedores_telefono_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4780 (class 2606 OID 17946)
+-- Name: proveedores proveedores_telefono_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.proveedores
@@ -753,8 +806,8 @@ ALTER TABLE ONLY public.proveedores
 
 
 --
--- TOC entry 4814 (class 2606 OID 27198)
--- Name: provincias provincias_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4760 (class 2606 OID 17834)
+-- Name: provincias provincias_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.provincias
@@ -762,8 +815,8 @@ ALTER TABLE ONLY public.provincias
 
 
 --
--- TOC entry 4812 (class 2606 OID 27191)
--- Name: trabajadores trabajadores_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4758 (class 2606 OID 17827)
+-- Name: trabajadores trabajadores_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.trabajadores
@@ -771,8 +824,8 @@ ALTER TABLE ONLY public.trabajadores
 
 
 --
--- TOC entry 4800 (class 2606 OID 27160)
--- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4746 (class 2606 OID 17796)
+-- Name: usuarios usuarios_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.usuarios
@@ -780,8 +833,8 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 4802 (class 2606 OID 27162)
--- Name: usuarios usuarios_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4748 (class 2606 OID 17798)
+-- Name: usuarios usuarios_username_key; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.usuarios
@@ -789,8 +842,8 @@ ALTER TABLE ONLY public.usuarios
 
 
 --
--- TOC entry 4820 (class 2606 OID 27244)
--- Name: ventas ventas_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4766 (class 2606 OID 17880)
+-- Name: ventas ventas_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.ventas
@@ -798,40 +851,40 @@ ALTER TABLE ONLY public.ventas
 
 
 --
--- TOC entry 4858 (class 2620 OID 27375)
--- Name: clientes clientes_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- TOC entry 4805 (class 2620 OID 18021)
+-- Name: clientes clientes_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
 CREATE TRIGGER clientes_actualizar_updated_at BEFORE UPDATE ON public.clientes FOR EACH ROW EXECUTE FUNCTION public.actualizar_timestamp();
 
 
 --
--- TOC entry 4860 (class 2620 OID 27372)
--- Name: productos_proveedores tr_guardar_historial_precio; Type: TRIGGER; Schema: public; Owner: -
+-- TOC entry 4807 (class 2620 OID 18018)
+-- Name: productos_proveedores tr_guardar_historial_precio; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
 CREATE TRIGGER tr_guardar_historial_precio BEFORE UPDATE OF total ON public.productos_proveedores FOR EACH ROW WHEN ((old.total IS DISTINCT FROM new.total)) EXECUTE FUNCTION public.guardar_historial_precio();
 
 
 --
--- TOC entry 4859 (class 2620 OID 27376)
--- Name: trabajadores trabajadores_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- TOC entry 4806 (class 2620 OID 18022)
+-- Name: trabajadores trabajadores_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
 CREATE TRIGGER trabajadores_actualizar_updated_at BEFORE UPDATE ON public.trabajadores FOR EACH ROW EXECUTE FUNCTION public.actualizar_timestamp();
 
 
 --
--- TOC entry 4857 (class 2620 OID 27374)
--- Name: usuarios usuarios_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- TOC entry 4804 (class 2620 OID 18020)
+-- Name: usuarios usuarios_actualizar_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
 CREATE TRIGGER usuarios_actualizar_updated_at BEFORE UPDATE ON public.usuarios FOR EACH ROW EXECUTE FUNCTION public.actualizar_timestamp();
 
 
 --
--- TOC entry 4847 (class 2606 OID 27253)
--- Name: categorias categorias_categoria_padre_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4793 (class 2606 OID 17889)
+-- Name: categorias categorias_categoria_padre_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.categorias
@@ -839,8 +892,8 @@ ALTER TABLE ONLY public.categorias
 
 
 --
--- TOC entry 4843 (class 2606 OID 27176)
--- Name: clientes clientes_usuario_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4789 (class 2606 OID 17812)
+-- Name: clientes clientes_usuario_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.clientes
@@ -848,8 +901,8 @@ ALTER TABLE ONLY public.clientes
 
 
 --
--- TOC entry 4851 (class 2606 OID 27318)
--- Name: contacto_proveedor contacto_proveedor_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4798 (class 2606 OID 17959)
+-- Name: contacto_proveedor contacto_proveedor_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.contacto_proveedor
@@ -857,8 +910,17 @@ ALTER TABLE ONLY public.contacto_proveedor
 
 
 --
--- TOC entry 4845 (class 2606 OID 27222)
--- Name: direccion_cliente direccion_cliente_cliente_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4796 (class 2606 OID 17932)
+-- Name: detalles_venta detalles_venta_venta_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.detalles_venta
+    ADD CONSTRAINT detalles_venta_venta_fkey FOREIGN KEY (venta) REFERENCES public.ventas(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
+-- TOC entry 4791 (class 2606 OID 17858)
+-- Name: direccion_cliente direccion_cliente_cliente_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.direccion_cliente
@@ -866,8 +928,8 @@ ALTER TABLE ONLY public.direccion_cliente
 
 
 --
--- TOC entry 4846 (class 2606 OID 27227)
--- Name: direccion_cliente direccion_cliente_direccion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4792 (class 2606 OID 17863)
+-- Name: direccion_cliente direccion_cliente_direccion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.direccion_cliente
@@ -875,8 +937,8 @@ ALTER TABLE ONLY public.direccion_cliente
 
 
 --
--- TOC entry 4844 (class 2606 OID 27210)
--- Name: direcciones direcciones_provincia_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4790 (class 2606 OID 17846)
+-- Name: direcciones direcciones_provincia_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.direcciones
@@ -884,8 +946,8 @@ ALTER TABLE ONLY public.direcciones
 
 
 --
--- TOC entry 4855 (class 2606 OID 27400)
--- Name: historial_productos historial_productos_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4802 (class 2606 OID 18007)
+-- Name: historial_productos historial_productos_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.historial_productos
@@ -893,8 +955,8 @@ ALTER TABLE ONLY public.historial_productos
 
 
 --
--- TOC entry 4856 (class 2606 OID 27405)
--- Name: historial_productos historial_productos_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4803 (class 2606 OID 18012)
+-- Name: historial_productos historial_productos_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.historial_productos
@@ -902,8 +964,8 @@ ALTER TABLE ONLY public.historial_productos
 
 
 --
--- TOC entry 4849 (class 2606 OID 27279)
--- Name: imagenes_productos imagenes_productos_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4795 (class 2606 OID 17915)
+-- Name: imagenes_productos imagenes_productos_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.imagenes_productos
@@ -911,8 +973,8 @@ ALTER TABLE ONLY public.imagenes_productos
 
 
 --
--- TOC entry 4854 (class 2606 OID 27352)
--- Name: ordenes_compra_proveedor ordenes_compra_proveedor_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4801 (class 2606 OID 17993)
+-- Name: ordenes_compra_proveedor ordenes_compra_proveedor_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.ordenes_compra_proveedor
@@ -920,8 +982,8 @@ ALTER TABLE ONLY public.ordenes_compra_proveedor
 
 
 --
--- TOC entry 4848 (class 2606 OID 27266)
--- Name: productos productos_categoria_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4794 (class 2606 OID 17902)
+-- Name: productos productos_categoria_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.productos
@@ -929,8 +991,8 @@ ALTER TABLE ONLY public.productos
 
 
 --
--- TOC entry 4852 (class 2606 OID 27333)
--- Name: productos_proveedores productos_proveedores_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4799 (class 2606 OID 17974)
+-- Name: productos_proveedores productos_proveedores_producto_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.productos_proveedores
@@ -938,8 +1000,8 @@ ALTER TABLE ONLY public.productos_proveedores
 
 
 --
--- TOC entry 4853 (class 2606 OID 27338)
--- Name: productos_proveedores productos_proveedores_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4800 (class 2606 OID 17979)
+-- Name: productos_proveedores productos_proveedores_proveedor_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.productos_proveedores
@@ -947,15 +1009,15 @@ ALTER TABLE ONLY public.productos_proveedores
 
 
 --
--- TOC entry 4850 (class 2606 OID 27306)
--- Name: proveedores proveedores_direccion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- TOC entry 4797 (class 2606 OID 17947)
+-- Name: proveedores proveedores_direccion_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
 ALTER TABLE ONLY public.proveedores
     ADD CONSTRAINT proveedores_direccion_fkey FOREIGN KEY (direccion) REFERENCES public.direcciones(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
--- Completed on 2024-11-15 20:02:57
+-- Completed on 2024-11-16 16:13:26
 
 --
 -- PostgreSQL database dump complete

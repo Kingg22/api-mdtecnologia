@@ -39,8 +39,11 @@ public partial class Venta
     public decimal Total { get; set; }
 
     [Column("direccion_entrega")]
-    public Guid DireccionEntrega { get; set; }
+    public Guid DireccionEntrega { get; set; } 
 
     [Column("cliente")]
     public Guid Cliente { get; set; }
+
+    [InverseProperty("VentaNavigation")]
+    public virtual ICollection<DetalleVenta> DetallesVenta { get; set; } = [];
 }

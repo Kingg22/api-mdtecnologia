@@ -106,7 +106,8 @@ CREATE TABLE detalles_venta (
     impuesto NUMERIC(12, 2) NOT NULL CHECK (impuesto >= 0),
     total NUMERIC(12, 2) NOT NULL CHECK (total >= 0),
     producto UUID NOT NULL,
-    venta UUID NOT NULL
+    venta UUID NOT NULL,
+	FOREIGN KEY (venta) REFERENCES ventas(id) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE proveedores (
