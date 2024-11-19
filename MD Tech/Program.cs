@@ -10,6 +10,7 @@ using NodaTime;
 using NodaTime.Serialization.SystemTextJson;
 using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.Filters;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,7 +50,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJw
 builder.Services.TryAddTransient<IStorageApi, OciStorageApi>();
 builder.Configuration.AddJsonFile("appsettings.json", false, true);
 
-builder.Services.AddControllers().AddJsonOptions(o => o.JsonSerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb));
+builder.Services.AddControllers().AddJsonOptions(o =>
+{
+    o.JsonSerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb);
+    o.JsonSerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+});
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -72,7 +77,11 @@ builder.Services.AddSwaggerGen(c =>
     c.MapType<LocalDate>(() => new OpenApiSchema { Type = "string", Format = "date" });
     c.MapType<LocalTime>(() => new OpenApiSchema { Type = "string", Format = "time" });
     c.MapType<LocalDateTime>(() => new OpenApiSchema { Type = "string", Format = "date-time" });
-}).ConfigureHttpJsonOptions(o => o.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb));
+}).ConfigureHttpJsonOptions(o =>
+{
+    o.SerializerOptions.ConfigureForNodaTime(DateTimeZoneProviders.Tzdb); 
+    o.SerializerOptions.PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower;
+});
 
 var app = builder.Build();
 app.UseCors("AllowAllOrigins");
@@ -87,4 +96,4 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 app.MapControllers();
 
-app.Run();
+await app.RunAsync();
