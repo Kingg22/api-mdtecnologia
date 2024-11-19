@@ -80,6 +80,7 @@ public partial class MdtecnologiaContext : DbContext
 
             entity.Property(e => e.Id).HasDefaultValueSql("gen_random_uuid()");
             entity.Property(e => e.Descuento).HasDefaultValueSql("0.00");
+            entity.HasOne(d => d.VentaNavigation).WithMany(p => p.DetallesVenta).HasConstraintName("detalles_venta_venta_fkey");
         });
 
         modelBuilder.Entity<DireccionesCliente>(entity =>

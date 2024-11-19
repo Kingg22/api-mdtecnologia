@@ -39,4 +39,10 @@ public partial class DetalleVenta
 
     [Column("venta")]
     public Guid Venta { get; set; }
+
+    [ForeignKey("Venta")]
+    [InverseProperty("DetallesVenta")]
+    [Newtonsoft.Json.JsonIgnore]
+    [System.Text.Json.Serialization.JsonIgnore]
+    public virtual Venta VentaNavigation { get; set; } = null!;
 }
