@@ -1,9 +1,13 @@
 ﻿using MD_Tech.Context;
 using MD_Tech.DTOs;
 using MD_Tech.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
+using Swashbuckle.AspNetCore.Annotations;
+using Swashbuckle.AspNetCore.Filters;
 
 namespace MD_Tech.Controllers
 {
@@ -21,12 +25,19 @@ namespace MD_Tech.Controllers
         }
 
         [HttpGet]
-        public async Task<ActionResult<List<Venta>>> GetVentas()
+        [Authorize]
+        [SwaggerOperation(Summary = "Obtiene todos las ventas", Description = "Devuelve una lista de ventas con sus detalles")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(List<Venta>))]
+        public async Task<ActionResult<List<Venta>>> GetVenta()
         {
             return Ok(new { ventas = await mdtecnologiaContext.Ventas.Include(v => v.DetallesVenta).ToListAsync() });
         }
 
         [HttpGet("{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Obtiene una venta por ID", Description = "Devuelve la venta con su detalle")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(Venta))]
+        [SwaggerResponse(404, "Venta no encontrado")]
         public async Task<ActionResult<Venta>> GetVenta(Guid id)
         {
             var ven = await mdtecnologiaContext.Ventas
@@ -36,68 +47,56 @@ namespace MD_Tech.Controllers
         }
 
         [HttpGet("Detalles/{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Obtiene los detalles por ID venta", Description = "Devuelve una lista de detalles de la venta")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(List<DetalleVenta>))]
+        [SwaggerResponse(404, "Venta no encontrado o sin detalles")]
         public async Task<ActionResult<List<DetalleVenta>>> GetDetalles(Guid id)
         {
             var detalles = await mdtecnologiaContext.DetallesVentas
                 .Where(d => d.Venta == id)
                 .ToListAsync();
             if (detalles == null || detalles.Count == 0)
-                return NotFound(new { mensaje = "No se encontraron detalles para esta venta." });
+                return NotFound();
             return Ok(detalles);
         }
 
         [HttpPost]
-        public async Task<ActionResult> AddVenta(VentaDto ventaDto)
+        [Authorize]
+        [SwaggerOperation(Summary = "Crea un venta con sus detalles", 
+                          Description = "Agrega una nueva venta a la base de datos. Si no se dan valores, se determina el mejor dato almacenado en la base de datos")]
+        [SwaggerResponse(201, "Venta creada", typeof(Venta))]
+        [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
+        [SwaggerResponse(400, "Datos de entrada inválidos")]
+        [SwaggerResponse(404, "No se han encontrado datos necesarios")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
+        public async Task<ActionResult<Venta>> AddVenta(VentaDto ventaDto)
         {
             using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             try
             {
-                if (ventaDto.Descuento < 0)
-                {
-                    logsApi.Errores("El descuento no puede ser negativo");
-                    return BadRequest(new { Descuento = "Descuento inválido" });
-                }
-                if (ventaDto.CantidadTotalProductos < 0)
-                {
-                    logsApi.Errores("La cantidad de productos no puede ser negativa");
-                    return BadRequest(new { CantidadProducto = "Cantidad inválida" });
-                }
-                if (ventaDto.Subtotal < 0)
-                {
-                    logsApi.Errores("El subtotal no puede ser negativo");
-                    return BadRequest(new { Subtotal = "Subtotal inválido" });
-                }
                 var cliente = await mdtecnologiaContext.Clientes
                     .Include(c => c.Direcciones)
                     .FirstOrDefaultAsync(c => c.Id == ventaDto.Cliente);
                 if (cliente == null)
+                    return NotFound(new { Cliente = "Cliente No Existe" });
+                if (cliente.Direcciones.Count == 0)
                 {
-                    logsApi.Errores("El Cliente No existe");
-                    return BadRequest(new { Cliente = "Cliente inválido" });
+                    logsApi.Errores($"No tiene direcciones registradas el cliente {cliente.Id} para asignarle a su venta");
+                    return NotFound(new { DireccionEntrega = "el cliente no tiene direcciones registradas" });
                 }
                 if (ventaDto.DireccionEntrega == null)
-                {
-                    if (cliente.Direcciones.Count == 0)
-                    {
-                        // No tiene direcciones registradas
-                        return NotFound();
-                    }
-                    ventaDto.DireccionEntrega = cliente.Direcciones.FirstOrDefault()?.Id;
-                }
+                    ventaDto.DireccionEntrega = cliente.Direcciones.First().Id;
                 else if (!cliente.Direcciones.Any(d => d.Id == ventaDto.DireccionEntrega))
                     return BadRequest(new { Direccion_Entrega = "La Direccion ingresada No esta Registrada Por el Cliente" });
 
                 var venta = new Venta()
                 {
                     Cliente = ventaDto.Cliente,
-                    Descuento = decimal.Zero,
                     Estado = ventaDto.Estado.ToString(),
-                    CantidadTotalProductos = 0,
-                    Subtotal = 0,
-                    Total = 0,
+                    Fecha = ventaDto.Fecha ?? LocalDateTime.FromDateTime(DateTime.UtcNow),
                     DireccionEntrega = (Guid)ventaDto.DireccionEntrega,
                 };
-
                 await mdtecnologiaContext.Ventas.AddAsync(venta);
                 await mdtecnologiaContext.SaveChangesAsync();
 
@@ -105,70 +104,90 @@ namespace MD_Tech.Controllers
                 {
                     foreach (var detalle in ventaDto.Detalles)
                     {
-                        if (detalle.PrecioUnitario < 0)
+                        if ((detalle.Cantidad < 0) || (detalle.PrecioUnitario.HasValue && detalle.PrecioUnitario < 0) || (detalle.Descuento.HasValue && detalle.Descuento < 0) || (ventaDto.Subtotal.HasValue && ventaDto.Subtotal < 0))
                         {
-                            logsApi.Errores("El precio no puede ser negativo");
+                            logsApi.Errores($"Valores negativos en el detalle del producto {detalle.Producto}");
                             await transaction.RollbackAsync();
-                            return BadRequest(new { precio = "Precio Invalido" });
+                            return BadRequest(new { Detalle_Descuento = $"Valor inválido para el producto {detalle.Producto}" });
                         }
-                        
-                        var producto = await mdtecnologiaContext.Productos.Include(p => p.ProductosProveedores ).FirstOrDefaultAsync(p=> p.Id==detalle.Producto);
+
+                        var producto = await mdtecnologiaContext.Productos
+                            .Include(p => p.ProductosProveedores)
+                            .FirstOrDefaultAsync(p=> p.Id==detalle.Producto);
                         if (producto == null)
                         {
-                            logsApi.Errores("El Producto no esta Registrado");
+                            logsApi.Errores("El Producto no esta Registrado para la venta");
                             await transaction.RollbackAsync();
                             return NotFound(new { DetalleProducto_Producto = $"Producto Invalido ID: {detalle.Producto}" });
                         }
                         if (producto.ProductosProveedores.Count == 0)
                         {
+                            logsApi.Errores("El producto no tiene proveedores para realizar la venta");
                             await transaction.RollbackAsync();
-                            return NotFound(new { Producto = "El producto no tiene registrado proveedores" });
+                            return NotFound(new { Producto_Proveedores = "El producto no tiene registrado proveedores" });
                         }
-                        var precio = detalle.PrecioUnitario ?? producto.ProductosProveedores.MinBy(pp => pp.Total).Precio;
+                        var producto_menor_precio = producto.ProductosProveedores.MinBy(pp => pp.Total);
+                        if (producto_menor_precio == null)
+                        {
+                            logsApi.Errores($"No se pudo determinar el proveedor con menor precio para el producto {producto.Id}");
+                            await transaction.RollbackAsync();
+                            return NotFound(new { Producto_Proveedor = "No se pudo encontrar el mejor proveedor para esta venta" });
+                        }
+                        var precio = detalle.PrecioUnitario ?? producto_menor_precio.Precio;
                         var sub = precio * detalle.Cantidad;
+                        var impuesto = detalle.Impuesto ?? producto_menor_precio.Impuesto;
+                        var descuento = detalle.Descuento ?? decimal.Zero;
+                        var total = Math.Round(sub + impuesto - descuento, 2);
+                        
                         var detalleVenta = new DetalleVenta()
                         {
                             Venta = venta.Id,
                             Cantidad = detalle.Cantidad,
                             PrecioUnitario = precio,
                             Subtotal = sub,
-                            Descuento = detalle.Descuento ?? decimal.Zero,
-                            Impuesto = detalle.Impuesto ?? decimal.Zero,
-                            Total = decimal.Zero,
+                            Descuento = descuento,
+                            Impuesto = impuesto,
+                            Total = total,
                             Producto = detalle.Producto,
                         };
-                        detalleVenta.Total = (detalleVenta.Subtotal - detalleVenta.Impuesto) - detalleVenta.Descuento;
-                        
                         await mdtecnologiaContext.DetallesVentas.AddAsync(detalleVenta);
                     }
                     await mdtecnologiaContext.SaveChangesAsync();
                 }
-
                 await mdtecnologiaContext.Entry(venta).ReloadAsync();
                 await mdtecnologiaContext.Entry(venta).Collection(v => v.DetallesVenta).LoadAsync();
                 // Se hace la suma de todos los detalles para el recibo final de venta
                 venta.CantidadTotalProductos = venta.DetallesVenta.Sum(d => d.Cantidad);
                 venta.Subtotal = venta.DetallesVenta.Sum(d => d.Subtotal);
+                venta.Descuento = venta.DetallesVenta.Sum(d => d.Descuento);
                 venta.Impuesto = venta.DetallesVenta.Sum(d => d.Impuesto);
                 venta.Total = venta.DetallesVenta.Sum(d => d.Total);
+                if (venta.Total != Math.Round(venta.Subtotal + venta.Impuesto - venta.Descuento, 2))
+                {
+                    logsApi.Errores("El total calculado no coincide con la suma de todos los detalles");
+                    await transaction.RollbackAsync();
+                    return Problem("Errores de cálculos para la factura");
+                }
 
                 await mdtecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                // Se recarga por última vez con todos los cambios realizados
-                await mdtecnologiaContext.Entry(venta).ReloadAsync();
-                await mdtecnologiaContext.Entry(venta).Collection(v => v.DetallesVenta).LoadAsync();
-                return Ok(new { venta });
+                return Created(Url.Action(nameof(GetVenta), "Ventas", new { id = venta.Id }, Request.Scheme), new { venta });
             }
             catch (Exception ex)
             {
                 logsApi.Excepciones(ex, "Error al crear la venta");
                 await transaction.RollbackAsync();
-                return Problem("Ocurrió un error al crear la venta");
+                return Problem();
             }
         }
 
         [HttpPatch("estado/{id}")]
-        public async Task<ActionResult> UpdateEstadoVenta(Guid id, [FromBody] EstadoVentaEnum newEstado)
+        [Authorize]
+        [SwaggerOperation(Summary = "Cambiar el estado de la venta", Description = "Se actualizan el estado de la venta en la base de datos")]
+        [SwaggerResponse(200, "Venta actualizada", typeof(Venta))]
+        [SwaggerResponse(404, "Venta no encontrada")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
+        public async Task<ActionResult<Venta>> UpdateEstadoVenta(Guid id, [FromBody] EstadoVentaEnum newEstado)
         {
             try
             {
@@ -181,17 +200,21 @@ namespace MD_Tech.Controllers
                 venta.Estado = newEstado.ToString();
 
                 await mdtecnologiaContext.SaveChangesAsync();
-                return Ok(new { Message = "El estado de la venta se actualizó con éxito.", EstadoActualizado = venta.Estado });
+                return Ok(new { venta });
             }
             catch (Exception ex)
             {
                 logsApi.Excepciones(ex, "Error al actualizar el estado de la venta");
-                return Problem("Error al actualizar el estado de la venta");
+                return Problem();
             }
         }
 
         [HttpDelete("{id}")]
-        public async Task<ActionResult> DeletleVenta(Guid id)
+        [Authorize]
+        [SwaggerOperation(Summary = "Elimina una venta", Description = "Se elimina una venta y sus detalles de la base de datos")]
+        [SwaggerResponse(204, "Venta eliminada")]
+        [SwaggerResponse(404, "Venta no encontrada")]
+        public async Task<ActionResult> DeleteVenta(Guid id)
         {
             try
             {
@@ -199,17 +222,17 @@ namespace MD_Tech.Controllers
                 if (venta == null)
                 {
                     logsApi.Informacion("La Venta no existe");
-                    return NotFound(new { veta = "Venta no Registrada" });
+                    return NotFound();
                 }
 
                 mdtecnologiaContext.Ventas.Remove(venta);
                 await mdtecnologiaContext.SaveChangesAsync();
-                return Ok("Se elimino la Venta");
+                return NoContent();
             }
             catch (Exception ex)
             {
-                logsApi.Excepciones(ex, "error al eliminar una veta");
-                return BadRequest(new { Deletle = ex });
+                logsApi.Excepciones(ex, "error al eliminar una venta");
+                return Problem();
             }
         }
 
