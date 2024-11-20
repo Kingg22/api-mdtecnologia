@@ -3,12 +3,10 @@ using MD_Tech.DTOs;
 using MD_Tech.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
-using Polly;
-using Polly.Caching;
 using Swashbuckle.AspNetCore.Annotations;
 using Swashbuckle.AspNetCore.Filters;
+using System.Net.Mail;
 
 namespace MD_Tech.Controllers
 {
@@ -64,7 +62,7 @@ namespace MD_Tech.Controllers
             using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             try
             {
-                if (await mdtecnologiaContext.Clientes.AnyAsync(n => n.Usuario == newCliente.IdUsuario))
+                if (newCliente.IdUsuario != null && await mdtecnologiaContext.Clientes.AnyAsync(n => n.Usuario != null && n.Usuario == newCliente.IdUsuario))
                 {
                     logger.Errores("El Usuario que ingreso ya está afiliado a un cliente");
                     return BadRequest(new { Usuario = "Error, el Usuario que ingresó ya está afiliado a un cliente" });
@@ -74,17 +72,17 @@ namespace MD_Tech.Controllers
                     logger.Informacion("El correo ya está registrado");
                     return BadRequest(new { correo = "Correo ya en uso" });
                 }
-                if (!newCliente.Correo.Contains('@') || newCliente.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(newCliente.Correo))
+                if (string.IsNullOrWhiteSpace(newCliente.Correo) || !ValidarCorreo(newCliente.Correo))
                 {
                     logger.Errores("El correo ingresado no cuenta con formato válido");
                     return BadRequest(new { correo = "Ingrese un correo válido" });
                 }
-                
+
                 var cliente = await CrearCliente(newCliente);
                 if (cliente == null)
                 {
                     logger.Errores("Error al crear el cliente");
-                    return BadRequest(new { dto = "Revise los campos, pueden ya estar registrados" });
+                    return BadRequest(new { message = "Revise los campos, pueden ya estar registrados" });
                 }
                 if (newCliente.Direcciones != null)
                 {
@@ -96,13 +94,13 @@ namespace MD_Tech.Controllers
                             await transaction.RollbackAsync();
                             return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} es inválida. Las provincias van del 1 al 10" });
                         }
-                        if(!await mdtecnologiaContext.Provincias.AnyAsync(p=> p.Id==direccionDto.Provincia) || direccionDto.Provincia ==null)
+                        if (!await mdtecnologiaContext.Provincias.AnyAsync(p => p.Id == direccionDto.Provincia) || direccionDto.Provincia == null)
                         {
                             logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
                             await transaction.RollbackAsync();
                             return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} No se encuentra Registrada" });
                         }
-                        if(string.IsNullOrWhiteSpace(direccionDto.Descripcion))
+                        if (string.IsNullOrWhiteSpace(direccionDto.Descripcion))
                         {
                             logger.Errores("La Descripcion Es invalida");
                             await transaction.RollbackAsync();
@@ -121,14 +119,13 @@ namespace MD_Tech.Controllers
                         {
                             Cliente = cliente.Id,
                             Direccion = direccion.Id
-                        }; 
+                        };
                         await mdtecnologiaContext.DireccionesClientes.AddAsync(enlace);
                     }
                     await mdtecnologiaContext.SaveChangesAsync();
                 }
                 await transaction.CommitAsync();
                 await mdtecnologiaContext.Entry(cliente).ReloadAsync();
-                await mdtecnologiaContext.Entry(cliente).Collection(d => d.DireccionClientes).LoadAsync();
                 await mdtecnologiaContext.Entry(cliente).Collection(di => di.Direcciones).LoadAsync();
 
                 logger.Informacion("Se ha creado un nuevo cliente");
@@ -148,37 +145,37 @@ namespace MD_Tech.Controllers
         [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
-        public async Task<ActionResult> CrearClienteUsuario([FromBody] ClienteUsuarioDto clienteUsuario)
+        public async Task<ActionResult> CrearClienteUsuario([FromBody] ClienteUsuarioDto newCliente)
         {
             using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             try
             {
-                if (string.IsNullOrWhiteSpace(clienteUsuario.Password) || clienteUsuario.Password.Contains(clienteUsuario.Username))
+                if (string.IsNullOrWhiteSpace(newCliente.Password) || newCliente.Password.Contains(newCliente.Username))
                 {
-                    logger.Informacion("registro rechazado por contraseña contiene usuario");
+                    logger.Errores("registro rechazado por contraseña contiene usuario");
                     return BadRequest(new { password = "ingrese una contraseña válida" });
                 }
-                if (string.IsNullOrWhiteSpace(clienteUsuario.Username))
+                if (string.IsNullOrWhiteSpace(newCliente.Username))
                 {
-                    logger.Informacion("No proporcionó un username");
+                    logger.Errores("No proporcionó un username");
                     return BadRequest(new { username = "el username es requerido" });
                 }
-                if (await mdtecnologiaContext.Usuarios.AnyAsync(u => u.Username.Equals(clienteUsuario.Username)))
+                if (await mdtecnologiaContext.Usuarios.AnyAsync(u => u.Username.Equals(newCliente.Username)))
                 {
-                    logger.Informacion("registro rechazado ya existe ese username");
+                    logger.Errores("registro rechazado ya existe ese username");
                     return BadRequest(new { username = "nombre de usuario en uso, intente nuevamente" });
                 }
-                if (!clienteUsuario.Correo.Contains("@") || clienteUsuario.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(clienteUsuario.Correo))
+                if (string.IsNullOrWhiteSpace(newCliente.Correo) || !ValidarCorreo(newCliente.Correo))
                 {
                     logger.Errores("El correo ingresado no cuenta con formato de correo");
-                    return BadRequest(new { correo = "Ingrese un correo Valido" });
+                    return BadRequest(new { correo = "Ingrese un correo Válido" });
                 }
                 var usuario = new Usuario
                 {
-                    Id = clienteUsuario.UsuarioID != null ? (Guid)clienteUsuario.UsuarioID : Guid.NewGuid(),
-                    Password = BCrypt.Net.BCrypt.HashPassword(clienteUsuario.Password),
-                    Username = clienteUsuario.Username,
-                    Disabled = clienteUsuario.Disabled,
+                    Id = newCliente.UsuarioId != null ? (Guid)newCliente.UsuarioId : Guid.NewGuid(),
+                    Password = BCrypt.Net.BCrypt.HashPassword(newCliente.Password),
+                    Username = newCliente.Username,
+                    Disabled = newCliente.Disabled,
                     Rol = RolesEnum.cliente.ToString()
                 };
                 await mdtecnologiaContext.Usuarios.AddAsync(usuario);
@@ -187,22 +184,63 @@ namespace MD_Tech.Controllers
 
                 var clientedto = new ClienteDto
                 {
-                    Id = clienteUsuario.ClienteID != null ? clienteUsuario.ClienteID : Guid.NewGuid(),
-                    Nombre = clienteUsuario.Nombre,
-                    Apellido = clienteUsuario.Apellido,
-                    Correo = clienteUsuario.Correo,
-                    Telefono = clienteUsuario.Telefono,
+                    Id = newCliente.ClienteId != null ? newCliente.ClienteId : Guid.NewGuid(),
+                    Nombre = newCliente.Nombre,
+                    Apellido = newCliente.Apellido,
+                    Correo = newCliente.Correo,
+                    Telefono = newCliente.Telefono,
                     IdUsuario = usuario.Id,
                 };
-                var crearC = await CrearCliente(clientedto);
-                if (crearC == null)
+                var cliente = await CrearCliente(clientedto);
+                if (cliente == null)
                 {
                     await transaction.RollbackAsync();
                     return BadRequest(new { message = "revise los campos, pueden ya estar registrados" });
                 }
-                await transaction.CommitAsync();
+                if (newCliente.Direcciones != null)
+                {
+                    foreach (var direccionDto in newCliente.Direcciones)
+                    {
+                        if (direccionDto.Provincia < 0 || direccionDto.Provincia > 10)
+                        {
+                            logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
+                            await transaction.RollbackAsync();
+                            return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} es inválida. Las provincias van del 1 al 10" });
+                        }
+                        if (!await mdtecnologiaContext.Provincias.AnyAsync(p => p.Id == direccionDto.Provincia) || direccionDto.Provincia == null)
+                        {
+                            logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
+                            await transaction.RollbackAsync();
+                            return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} No se encuentra Registrada" });
+                        }
+                        if (string.IsNullOrWhiteSpace(direccionDto.Descripcion))
+                        {
+                            logger.Errores("La Descripcion Es invalida");
+                            await transaction.RollbackAsync();
+                            return BadRequest(new { Descripcion = $"La Descripcion Es invalida" });
+                        }
 
-                return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = crearC.Id }, Request.Scheme), new { cliente = new ClienteDto(crearC) });
+                        var direccion = new Direccion
+                        {
+                            Id = Guid.NewGuid(),
+                            Provincia = (int)direccionDto.Provincia,
+                            Descripcion = direccionDto.Descripcion,
+                        };
+                        await mdtecnologiaContext.Direcciones.AddAsync(direccion);
+
+                        var enlace = new DireccionesCliente
+                        {
+                            Cliente = cliente.Id,
+                            Direccion = direccion.Id
+                        };
+                        await mdtecnologiaContext.DireccionesClientes.AddAsync(enlace);
+                    }
+                    await mdtecnologiaContext.SaveChangesAsync();
+                }
+                await transaction.CommitAsync();
+                await mdtecnologiaContext.Entry(cliente).ReloadAsync();
+                await mdtecnologiaContext.Entry(cliente).Collection(di => di.Direcciones).LoadAsync();
+                return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = cliente.Id }, Request.Scheme), new { cliente = new ClienteDto(cliente) });
             }
             catch (Exception ex)
             {
@@ -226,29 +264,28 @@ namespace MD_Tech.Controllers
             {
                 if (id != newCorreo.Id)
                 {
-                    logger.Informacion($"Cliente con id {id} no coincide con el body id {newCorreo.Id}");
+                    logger.Errores($"Cliente con id {id} no coincide con el body id {newCorreo.Id}");
                     return BadRequest(new { id = "El id del body no coincide con la ruta" });
                 }
-                if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !newCorreo.Correo.Contains('@'))
+                if (string.IsNullOrWhiteSpace(newCorreo.Correo) || !ValidarCorreo(newCorreo.Correo))
                 {
-                    logger.Informacion("Correo rechazado por no contener @");
+                    logger.Errores("Correo rechazado por no contener @");
                     return BadRequest(new { correo = "Ingrese un correo válido" });
                 }
                 var cliente = await mdtecnologiaContext.Clientes.FindAsync(newCorreo.Id);
                 if (cliente == null)
                 {
-                    logger.Informacion($"Cliente con ID {newCorreo.Id} no encontrado para actualizar su correo");
+                    logger.Errores($"Cliente con ID {newCorreo.Id} no encontrado para actualizar su correo");
                     return NotFound();
                 }
                 if (cliente.Correo == newCorreo.Correo)
                 {
-                    logger.Informacion("Correo rechazado por ser igual al actual");
+                    logger.Errores("Correo rechazado por ser igual al actual");
                     return BadRequest(new { correo = "El correo proporcionado es igual al correo actual" });
                 }
-                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.Correo);
-                if (verificorreo)
+                if (await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.Correo))
                 {
-                    logger.Informacion("El correo ya esta registrado");
+                    logger.Errores("El correo ya esta registrado");
                     return BadRequest(new { correo = "Correo ya en Uso" });
                 }
 
@@ -318,6 +355,20 @@ namespace MD_Tech.Controllers
             await mdtecnologiaContext.Clientes.AddAsync(cliente);
             await mdtecnologiaContext.SaveChangesAsync();
             return cliente;
+        }
+
+        [SwaggerIgnore]
+        public static bool ValidarCorreo(string correo)
+        {
+            try
+            {
+                var validado = new MailAddress(correo);
+                return validado is not null;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }
