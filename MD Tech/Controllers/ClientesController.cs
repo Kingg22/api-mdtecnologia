@@ -69,22 +69,21 @@ namespace MD_Tech.Controllers
                     logger.Errores("El Usuario que ingreso ya está afiliado a un cliente");
                     return BadRequest(new { Usuario = "Error, el Usuario que ingresó ya está afiliado a un cliente" });
                 }
-
                 if (await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCliente.Correo))
                 {
                     logger.Informacion("El correo ya está registrado");
                     return BadRequest(new { correo = "Correo ya en uso" });
                 }
-
                 if (!newCliente.Correo.Contains('@') || newCliente.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(newCliente.Correo))
                 {
                     logger.Errores("El correo ingresado no cuenta con formato válido");
                     return BadRequest(new { correo = "Ingrese un correo válido" });
                 }
+                
                 var cliente = await CrearCliente(newCliente);
                 if (cliente == null)
                 {
-                    logger.Depuracion("Error al crear el cliente");
+                    logger.Errores("Error al crear el cliente");
                     return BadRequest(new { dto = "Revise los campos, pueden ya estar registrados" });
                 }
                 if (newCliente.Direcciones != null)
@@ -94,27 +93,29 @@ namespace MD_Tech.Controllers
                         if (direccionDto.Provincia < 0 || direccionDto.Provincia > 10)
                         {
                             logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
+                            await transaction.RollbackAsync();
                             return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} es inválida. Las provincias van del 1 al 10" });
                         }
                         if(!await mdtecnologiaContext.Provincias.AnyAsync(p=> p.Id==direccionDto.Provincia) || direccionDto.Provincia ==null)
                         {
                             logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
+                            await transaction.RollbackAsync();
                             return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} No se encuentra Registrada" });
-                        
                         }
                         if(string.IsNullOrWhiteSpace(direccionDto.Descripcion))
                         {
                             logger.Errores("La Descripcion Es invalida");
+                            await transaction.RollbackAsync();
                             return BadRequest(new { Descripcion = $"La Descripcion Es invalida" });
                         }
 
                         var direccion = new Direccion
                         {
+                            Id = Guid.NewGuid(),
                             Provincia = (int)direccionDto.Provincia,
                             Descripcion = direccionDto.Descripcion,
                         };
                         await mdtecnologiaContext.Direcciones.AddAsync(direccion);
-                        await mdtecnologiaContext.SaveChangesAsync();
 
                         var enlace = new DireccionesCliente
                         {
@@ -123,12 +124,12 @@ namespace MD_Tech.Controllers
                         }; 
                         await mdtecnologiaContext.DireccionesClientes.AddAsync(enlace);
                     }
+                    await mdtecnologiaContext.SaveChangesAsync();
                 }
-                await mdtecnologiaContext.SaveChangesAsync();        
+                await transaction.CommitAsync();
                 await mdtecnologiaContext.Entry(cliente).ReloadAsync();
                 await mdtecnologiaContext.Entry(cliente).Collection(d => d.DireccionClientes).LoadAsync();
                 await mdtecnologiaContext.Entry(cliente).Collection(di => di.Direcciones).LoadAsync();
-                await transaction.CommitAsync();
 
                 logger.Informacion("Se ha creado un nuevo cliente");
                 return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = cliente.Id }, Request.Scheme), new { cliente = new ClienteDto(cliente) });
@@ -181,7 +182,7 @@ namespace MD_Tech.Controllers
                     Rol = RolesEnum.cliente.ToString()
                 };
                 await mdtecnologiaContext.Usuarios.AddAsync(usuario);
-                var result = await mdtecnologiaContext.SaveChangesAsync();
+                await mdtecnologiaContext.SaveChangesAsync();
                 logger.Informacion("Se ha creado un nuevo Usuario");
 
                 var clientedto = new ClienteDto
