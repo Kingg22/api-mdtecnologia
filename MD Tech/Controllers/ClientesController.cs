@@ -3,7 +3,9 @@ using MD_Tech.DTOs;
 using MD_Tech.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Polly.Caching;
 using Swashbuckle.AspNetCore.Annotations;
 using Swashbuckle.AspNetCore.Filters;
 
@@ -58,40 +60,69 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult> AddCliente([FromBody] ClienteDto newCliente)
         {
+            using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             try
             {
                 if (await mdtecnologiaContext.Clientes.AnyAsync(n => n.Usuario == newCliente.IdUsuario))
                 {
-                    logger.Errores("El Usuario que ingreso ya esta Afiliado a un cliente");
-                    return BadRequest(new { Usuario = "Error, el Usuario que ingreso ya esta Afiliado a un cliente" });
-                }
-                var verificorreo = await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCliente.Correo);
-                if (verificorreo)
-                {
-                    logger.Informacion("El correo ya esta registrado");
-                    return BadRequest(new { correo = "Correo ya en Uso" });
-                }
-                if (!newCliente.Correo.Contains('@') || newCliente.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(newCliente.Correo))
-                {
-                    logger.Errores("El correo ingresado no cuenta con formato de correo");
-                    return BadRequest(new { correo = "Ingrese un correo Valido" });
+                    logger.Errores("El Usuario que ingreso ya está afiliado a un cliente");
+                    return BadRequest(new { Usuario = "Error, el Usuario que ingresó ya está afiliado a un cliente" });
                 }
 
+                if (await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCliente.Correo))
+                {
+                    logger.Informacion("El correo ya está registrado");
+                    return BadRequest(new { correo = "Correo ya en uso" });
+                }
+
+                if (!newCliente.Correo.Contains('@') || newCliente.Correo.Count(c => c == '@') > 1 || string.IsNullOrWhiteSpace(newCliente.Correo))
+                {
+                    logger.Errores("El correo ingresado no cuenta con formato válido");
+                    return BadRequest(new { correo = "Ingrese un correo válido" });
+                }
                 var cliente = await CrearCliente(newCliente);
-                if (cliente != null)
+                if (cliente == null)
                 {
-                    logger.Informacion("se ha creado un nuevo cliente");
-                    return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = cliente.Id }, Request.Scheme), new { cliente = new ClienteDto(cliente) });
+                    logger.Depuracion("Error al crear el cliente");
+                    return BadRequest(new { dto = "Revise los campos, pueden ya estar registrados" });
                 }
-                else
+                if (newCliente.Direcciones != null)
                 {
-                    logger.Depuracion("Error al crear el Usuario");
-                    return BadRequest(new { dto = "revise los campos, pueden ya estar registrados" });
+                    foreach (var direccionDto in newCliente.Direcciones)
+                    {
+                        if (direccionDto.Provincia < 0 || direccionDto.Provincia > 10)
+                        {
+                            logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
+                            return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} es inválida. Las provincias van del 1 al 10" });
+                        }
+
+                        var direccion = new Direccion
+                        {
+                            Provincia = (int)direccionDto.Provincia,
+                            Descripcion = direccionDto.Descripcion,
+                        };
+                        await mdtecnologiaContext.Direcciones.AddAsync(direccion);
+                        await mdtecnologiaContext.SaveChangesAsync();
+
+                        var enlace = new DireccionesCliente
+                        {
+                            Cliente = cliente.Id,
+                            Direccion = direccion.Id
+                        };
+
+                      await mdtecnologiaContext.DireccionesClientes.AddAsync(enlace);
+                    }
                 }
+                await mdtecnologiaContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                logger.Informacion("Se ha creado un nuevo cliente");
+                return Created(Url.Action(nameof(GetClientes), "Cliente", new { id = cliente.Id }, Request.Scheme), new { cliente = new ClienteDto(cliente) });
             }
             catch (Exception ex)
             {
-                logger.Excepciones(ex, "ha Ocurrido un Error en el Enpoint AddCliente");
+                await transaction.RollbackAsync();
+                logger.Excepciones(ex, "Ha ocurrido un error en el endpoint AddCliente");
                 return Problem();
             }
         }
