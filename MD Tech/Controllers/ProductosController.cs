@@ -358,10 +358,7 @@ namespace MD_Tech.Controllers
                                 await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
                             }
                             else
-                            {
                                 logger.Advertencia($"Omitiendo una url no válida la imagen: {imagenDto.Url}");
-                                continue;
-                            }
                         }
                         await MdTecnologiaContext.SaveChangesAsync();
                     }
@@ -431,6 +428,78 @@ namespace MD_Tech.Controllers
             }
             else
                 return NotFound();
+        }
+
+        [HttpPatch("{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Actualiza los proveedores de un producto", Description = "Agrega o actualiza una lista de proveedores de un producto a la base de datos")]
+        [SwaggerResponse(200, "Producto actualizado", typeof(ProductosDto))]
+        [SwaggerResponse(404, "Producto no encontrado")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
+        public async Task<ActionResult<ProductosDto>> UpdatePrecios(Guid id, List<ProductoProveedorDto> ListProductoProveedorDto)
+        {
+            var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
+            try {
+                var producto = await MdTecnologiaContext.Productos.FindAsync(id);
+                if (producto == null)
+                {
+                    await transaction.RollbackAsync();
+                    return NotFound();
+                }
+                foreach (var proveedorDto in ListProductoProveedorDto)
+                {
+                    if (id != proveedorDto.Producto)
+                    {
+                        logger.Advertencia($"Se ha omitido la relación producto {proveedorDto.Producto} - proveedor {proveedorDto.Proveedor} ya que no coincide con el Id en routa: {id}");
+                        continue;
+                    }
+                    if (await MdTecnologiaContext.Proveedores.FindAsync(proveedorDto.Proveedor) == null)
+                    {
+                        logger.Advertencia($"Se ha omitido la relación producto - proveedor con Id {proveedorDto.Proveedor} no encontrado, precio = {proveedorDto.Precio} + impuesto = {proveedorDto.Impuesto}");
+                        continue;
+                    }
+
+                    var productoProveedorExistente = await MdTecnologiaContext.ProductosProveedores.FirstOrDefaultAsync(pp => pp.Producto == id && pp.Proveedor == proveedorDto.Proveedor);
+                    if (productoProveedorExistente != null)
+                    {
+                        // Actualizar si ya existe
+                        productoProveedorExistente.Precio = proveedorDto.Precio;
+                        productoProveedorExistente.Impuesto = proveedorDto.Impuesto;
+                        productoProveedorExistente.Total = proveedorDto.Precio + proveedorDto.Impuesto;
+                        productoProveedorExistente.Stock = proveedorDto.Stock;
+                        productoProveedorExistente.FechaActualizado = proveedorDto.FechaActualizado != null
+                            ? (LocalDate)proveedorDto.FechaActualizado
+                            : LocalDate.FromDateTime(DateTime.UtcNow);
+                    }
+                    else
+                    {
+                        var productoProveedor = new ProductosProveedor()
+                        {
+                            Producto = id,
+                            Proveedor = proveedorDto.Proveedor,
+                            Precio = proveedorDto.Precio,
+                            Impuesto = proveedorDto.Impuesto,
+                            Total = proveedorDto.Precio + proveedorDto.Impuesto,
+                            Stock = proveedorDto.Stock,
+                            FechaActualizado = proveedorDto.FechaActualizado != null 
+                                ? (LocalDate)proveedorDto.FechaActualizado 
+                                : LocalDate.FromDateTime(DateTime.UtcNow),
+                        };
+                        await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
+                    }
+                }
+                await MdTecnologiaContext.SaveChangesAsync();
+                await transaction.CommitAsync();
+
+                await MdTecnologiaContext.Entry(producto).ReloadAsync();
+                await MdTecnologiaContext.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
+                return Ok(new { producto = new ProductosDto(producto) });
+            } catch (Exception ex)
+            {
+                logger.Excepciones(ex, "Error general al actualizar precios");
+                await transaction.RollbackAsync();
+                return Problem();
+            }
         }
 
         [HttpDelete("{id}")]
