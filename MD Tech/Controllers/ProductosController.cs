@@ -216,28 +216,21 @@ namespace MD_Tech.Controllers
                     try
                     {
                         logger.Informacion("Relaciones de imagenes producto encontradas. Procesando...");
-                        foreach (var imagenDto in productoDto.Imagenes)
+                        var imagenesValidas = productoDto.Imagenes.Where(imagenDto => !string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url));
+                        foreach (var imagenDto in imagenesValidas)
                         {
-                            if (!string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url))
+                            if (imagenDto.Descripcion != null && string.IsNullOrEmpty(imagenDto.Descripcion))
                             {
-                                if (imagenDto.Descripcion != null && string.IsNullOrEmpty(imagenDto.Descripcion))
-                                {
-                                    logger.Advertencia($"Colocando null a descripción inválida, url: {imagenDto.Url}");
-                                    imagenDto.Descripcion = null;
-                                }
-                                var imagenProducto = new ImagenesProducto()
-                                {
-                                    Producto = producto.Id,
-                                    Url = imagenDto.Url,
-                                    Descripcion = imagenDto.Descripcion,
-                                };
-                                await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
+                                logger.Advertencia($"Colocando null a descripción inválida, url: {imagenDto.Url}");
+                                imagenDto.Descripcion = null;
                             }
-                            else
+                            var imagenProducto = new ImagenesProducto()
                             {
-                                logger.Advertencia($"Omitiendo una url no válida la imagen: {imagenDto.Url}");
-                                continue;
-                            }
+                                Producto = producto.Id,
+                                Url = imagenDto.Url,
+                                Descripcion = imagenDto.Descripcion,
+                            };
+                            await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
                         }
                         await MdTecnologiaContext.SaveChangesAsync();
                     }
@@ -305,9 +298,11 @@ namespace MD_Tech.Controllers
                     try
                     {
                         logger.Informacion("Relaciones de proveedores encontradas, procesando...");
+                        var proveedoresUnicos = productoDto.Proveedores.Select(pp => pp.Proveedor).Distinct().ToList();
+                        var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
                         foreach (var proveedorDto in productoDto.Proveedores)
                         {
-                            if (await MdTecnologiaContext.Proveedores.FindAsync(proveedorDto.Proveedor) == null)
+                            if (!proveedoresExistentes.Contains(proveedorDto.Proveedor))
                             {
                                 logger.Advertencia($"Se ha omitido la relación producto - proveedor con Id {proveedorDto.Proveedor} no encontrado, precio = {proveedorDto.Precio} + impuesto = {proveedorDto.Impuesto}");
                                 continue;
@@ -340,25 +335,21 @@ namespace MD_Tech.Controllers
                     try
                     {
                         logger.Informacion("Relaciones de imagenes producto encontradas. Procesando...");
-                        foreach (var imagenDto in productoDto.Imagenes)
+                        var imagenesValidas = productoDto.Imagenes.Where(imagenDto => !string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url));
+                        foreach (var imagenDto in imagenesValidas)
                         {
-                            if (!string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url))
+                            if (imagenDto.Descripcion != null && string.IsNullOrEmpty(imagenDto.Descripcion))
                             {
-                                if (imagenDto.Descripcion != null && string.IsNullOrEmpty(imagenDto.Descripcion))
-                                {
-                                    logger.Advertencia($"Colocando null a descripción inválida, url: {imagenDto.Url}");
-                                    imagenDto.Descripcion = null;
-                                }
-                                var imagenProducto = new ImagenesProducto()
-                                {
-                                    Producto = productos.Id,
-                                    Url = imagenDto.Url,
-                                    Descripcion = imagenDto.Descripcion,
-                                };
-                                await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
+                                logger.Advertencia($"Colocando null a descripción inválida, url: {imagenDto.Url}");
+                                imagenDto.Descripcion = null;
                             }
-                            else
-                                logger.Advertencia($"Omitiendo una url no válida la imagen: {imagenDto.Url}");
+                            var imagenProducto = new ImagenesProducto()
+                            {
+                                Producto = productos.Id,
+                                Url = imagenDto.Url,
+                                Descripcion = imagenDto.Descripcion,
+                            };
+                            await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
                         }
                         await MdTecnologiaContext.SaveChangesAsync();
                     }
@@ -439,13 +430,16 @@ namespace MD_Tech.Controllers
         public async Task<ActionResult<ProductosDto>> UpdatePrecios(Guid id, List<ProductoProveedorDto> ListProductoProveedorDto)
         {
             var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
-            try {
+            try
+            {
                 var producto = await MdTecnologiaContext.Productos.FindAsync(id);
                 if (producto == null)
                 {
                     await transaction.RollbackAsync();
                     return NotFound();
                 }
+                var proveedoresUnicos = ListProductoProveedorDto.Where(pp => pp.Producto == id).Select(pp => pp.Proveedor).Distinct().ToList();
+                var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
                 foreach (var proveedorDto in ListProductoProveedorDto)
                 {
                     if (id != proveedorDto.Producto)
@@ -453,7 +447,7 @@ namespace MD_Tech.Controllers
                         logger.Advertencia($"Se ha omitido la relación producto {proveedorDto.Producto} - proveedor {proveedorDto.Proveedor} ya que no coincide con el Id en routa: {id}");
                         continue;
                     }
-                    if (await MdTecnologiaContext.Proveedores.FindAsync(proveedorDto.Proveedor) == null)
+                    if (!proveedoresExistentes.Contains(proveedorDto.Proveedor))
                     {
                         logger.Advertencia($"Se ha omitido la relación producto - proveedor con Id {proveedorDto.Proveedor} no encontrado, precio = {proveedorDto.Precio} + impuesto = {proveedorDto.Impuesto}");
                         continue;
@@ -481,8 +475,8 @@ namespace MD_Tech.Controllers
                             Impuesto = proveedorDto.Impuesto,
                             Total = proveedorDto.Precio + proveedorDto.Impuesto,
                             Stock = proveedorDto.Stock,
-                            FechaActualizado = proveedorDto.FechaActualizado != null 
-                                ? (LocalDate)proveedorDto.FechaActualizado 
+                            FechaActualizado = proveedorDto.FechaActualizado != null
+                                ? (LocalDate)proveedorDto.FechaActualizado
                                 : LocalDate.FromDateTime(DateTime.UtcNow),
                         };
                         await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
@@ -494,7 +488,8 @@ namespace MD_Tech.Controllers
                 await MdTecnologiaContext.Entry(producto).ReloadAsync();
                 await MdTecnologiaContext.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
                 return Ok(new { producto = new ProductosDto(producto) });
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 logger.Excepciones(ex, "Error general al actualizar precios");
                 await transaction.RollbackAsync();
@@ -535,7 +530,7 @@ namespace MD_Tech.Controllers
                 return NotFound(new { imagen = "no fue encontrada la imagen con ese Id para ese producto" });
             if (string.IsNullOrWhiteSpace(imagen.Descripcion))
                 return Problem("No se pudo obtener el nombre para eliminar su referencia en el servidor.");
-            
+
             var response = await storageApi.DeleteObjectAsync(imagen.Descripcion);
             if (response)
             {

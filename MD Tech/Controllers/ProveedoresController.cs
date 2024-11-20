@@ -61,30 +61,24 @@ namespace MD_Tech.Controllers
             try
             {
                 if (string.IsNullOrWhiteSpace(proveedorDto.Nombre))
-                    return BadRequest(new { nombre = "El nombre no puede ser null" });
-                if (proveedorDto.Correo != null)
+                    return BadRequest(new { nombre = "El nombre no es válido" });
+                if (proveedorDto.Correo != null && !ClientesController.ValidarCorreo(proveedorDto.Correo))
+                    return BadRequest(new { correo = "El correo no és válido" });
+                if (proveedorDto.Correo != null && await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(proveedorDto.Correo.ToLower())))
                 {
-                    if (await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(proveedorDto.Correo)))
-                    {
-                        logger.Errores("Correo ya en uso");
-                        return BadRequest(new { correo = "correo ya en uso" });
-                    }
+                    logger.Errores("Correo ya en uso");
+                    return BadRequest(new { correo = "correo ya en uso" });
                 }
-                if (proveedorDto.Telefono != null)
+                if (proveedorDto.Telefono != null && await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono != null && t.Telefono.Equals(proveedorDto.Telefono)))
                 {
-                    var result = await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono != null && t.Telefono.Equals(proveedorDto.Telefono));
-                    if (result)
-                    {
-                        logger.Errores("Telefono ya en uso");
-                        return BadRequest(new { telefono = "teléfono ya en uso" });
-                    }
+                    logger.Errores("Telefono ya en uso");
+                    return BadRequest(new { telefono = "teléfono ya en uso" });
                 }
                 if (proveedorDto.Direccion != null)
                 {
                     if (proveedorDto.Direccion.Id != null)
                     {
-                        var validarDireccio = await mdtecnologiaContext.Direcciones.FindAsync(proveedorDto.Direccion.Id);
-                        if (validarDireccio == null)
+                        if (await mdtecnologiaContext.Direcciones.FindAsync(proveedorDto.Direccion.Id) == null)
                         {
                             logger.Errores("Direccion No Registrada");
                             return BadRequest(new { direccion = "Direccion no registrada" });
@@ -119,21 +113,17 @@ namespace MD_Tech.Controllers
             {
                 if (string.IsNullOrWhiteSpace(proveedorDto.Nombre))
                     return BadRequest(new { nombre = "El nombre no puede ser null" });
-                if (proveedorDto.Correo != null)
+                if (proveedorDto.Correo != null && !ClientesController.ValidarCorreo(proveedorDto.Correo))
+                    return BadRequest(new { correo = "El correo no és válido" });
+                if (proveedorDto.Correo != null && await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(proveedorDto.Correo.ToLower())))
                 {
-                    if (await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(proveedorDto.Correo)))
-                    {
-                        logger.Errores("Correo ya en uso");
-                        return BadRequest(new { correo = "correo ya en uso" });
-                    }
+                    logger.Errores("Correo ya en uso");
+                    return BadRequest(new { correo = "correo ya en uso" });
                 }
-                if (proveedorDto.Telefono != null)
+                if (proveedorDto.Telefono != null && await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono != null && t.Telefono.Equals(proveedorDto.Telefono)))
                 {
-                    if (await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono != null && t.Telefono.Equals(proveedorDto.Telefono)))
-                    {
-                        logger.Errores("Telefono ya en uso");
-                        return BadRequest(new { telefono = "teléfono ya en uso" });
-                    }
+                    logger.Errores("Telefono ya en uso");
+                    return BadRequest(new { telefono = "teléfono ya en uso" });
                 }
                 if (proveedorDto.Direccion != null)
                 {
@@ -215,15 +205,12 @@ namespace MD_Tech.Controllers
                 }
                 if (changueProveedor.Correo != null)
                 {
-                    if (string.IsNullOrWhiteSpace(changueProveedor.Correo) || !changueProveedor.Correo.Contains('@') || changueProveedor.Correo.Count(c => c == '@') > 1)
+                    if (!ClientesController.ValidarCorreo(changueProveedor.Correo))
+                        return BadRequest(new { correo = "El correo no és válido" });
+                    if (await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(changueProveedor.Correo.ToLower())))
                     {
-                        logger.Errores("Correo Con formato invalido");
-                        return BadRequest(new { correo = "El correo no tiene el formato adecuado" });
-                    }
-                    if (await mdtecnologiaContext.Proveedores.AnyAsync(p => p.Id != changueProveedor.Id && p.Correo != null && p.Correo.ToLower().Equals(changueProveedor.Correo)))
-                    {
-                        logger.Errores("El correo que se ingreso, se encuentra en uso");
-                        return BadRequest(new { correo = "El correo ya esta en uso" });
+                        logger.Errores("Correo ya en uso");
+                        return BadRequest(new { correo = "correo ya en uso" });
                     }
                 }
 

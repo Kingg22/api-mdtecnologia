@@ -67,15 +67,15 @@ namespace MD_Tech.Controllers
                     logger.Errores("El Usuario que ingreso ya está afiliado a un cliente");
                     return BadRequest(new { Usuario = "Error, el Usuario que ingresó ya está afiliado a un cliente" });
                 }
-                if (await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCliente.Correo))
-                {
-                    logger.Informacion("El correo ya está registrado");
-                    return BadRequest(new { correo = "Correo ya en uso" });
-                }
                 if (string.IsNullOrWhiteSpace(newCliente.Correo) || !ValidarCorreo(newCliente.Correo))
                 {
                     logger.Errores("El correo ingresado no cuenta con formato válido");
                     return BadRequest(new { correo = "Ingrese un correo válido" });
+                }
+                if (await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo.ToLower().Equals(newCliente.Correo.ToLower())))
+                {
+                    logger.Informacion("El correo ya está registrado");
+                    return BadRequest(new { correo = "Correo ya en uso" });
                 }
 
                 var cliente = await CrearCliente(newCliente);
@@ -88,13 +88,7 @@ namespace MD_Tech.Controllers
                 {
                     foreach (var direccionDto in newCliente.Direcciones)
                     {
-                        if (direccionDto.Provincia < 0 || direccionDto.Provincia > 10)
-                        {
-                            logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
-                            await transaction.RollbackAsync();
-                            return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} es inválida. Las provincias van del 1 al 10" });
-                        }
-                        if (!await mdtecnologiaContext.Provincias.AnyAsync(p => p.Id == direccionDto.Provincia) || direccionDto.Provincia == null)
+                        if (direccionDto.Provincia == null || !await mdtecnologiaContext.Provincias.AnyAsync(p => p.Id == direccionDto.Provincia))
                         {
                             logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
                             await transaction.RollbackAsync();
@@ -104,7 +98,7 @@ namespace MD_Tech.Controllers
                         {
                             logger.Errores("La Descripcion Es invalida");
                             await transaction.RollbackAsync();
-                            return BadRequest(new { Descripcion = $"La Descripcion Es invalida" });
+                            return BadRequest(new { Descripcion = $"La Descripcion de dirección Es invalida" });
                         }
 
                         var direccion = new Direccion
@@ -195,18 +189,13 @@ namespace MD_Tech.Controllers
                 if (cliente == null)
                 {
                     await transaction.RollbackAsync();
+                    logger.Errores("Error al crear cliente, eliminando su usuario");
                     return BadRequest(new { message = "revise los campos, pueden ya estar registrados" });
                 }
                 if (newCliente.Direcciones != null)
                 {
                     foreach (var direccionDto in newCliente.Direcciones)
                     {
-                        if (direccionDto.Provincia < 0 || direccionDto.Provincia > 10)
-                        {
-                            logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
-                            await transaction.RollbackAsync();
-                            return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} es inválida. Las provincias van del 1 al 10" });
-                        }
                         if (!await mdtecnologiaContext.Provincias.AnyAsync(p => p.Id == direccionDto.Provincia) || direccionDto.Provincia == null)
                         {
                             logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
@@ -215,9 +204,9 @@ namespace MD_Tech.Controllers
                         }
                         if (string.IsNullOrWhiteSpace(direccionDto.Descripcion))
                         {
-                            logger.Errores("La Descripcion Es invalida");
+                            logger.Errores("La Descripcion de dirección Es invalida");
                             await transaction.RollbackAsync();
-                            return BadRequest(new { Descripcion = $"La Descripcion Es invalida" });
+                            return BadRequest(new { Descripcion = $"La Descripcion Es inválida" });
                         }
 
                         var direccion = new Direccion
@@ -278,12 +267,12 @@ namespace MD_Tech.Controllers
                     logger.Errores($"Cliente con ID {newCorreo.Id} no encontrado para actualizar su correo");
                     return NotFound();
                 }
-                if (cliente.Correo == newCorreo.Correo)
+                if (cliente.Correo.ToLower().Equals(newCorreo.Correo, StringComparison.OrdinalIgnoreCase))
                 {
                     logger.Errores("Correo rechazado por ser igual al actual");
                     return BadRequest(new { correo = "El correo proporcionado es igual al correo actual" });
                 }
-                if (await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo == newCorreo.Correo))
+                if (await mdtecnologiaContext.Clientes.AnyAsync(c => c.Correo.ToLower().Equals(newCorreo.Correo.ToLower())))
                 {
                     logger.Errores("El correo ya esta registrado");
                     return BadRequest(new { correo = "Correo ya en Uso" });
@@ -339,8 +328,8 @@ namespace MD_Tech.Controllers
         {
             var usuario = await mdtecnologiaContext.Usuarios.FindAsync(newCliente.IdUsuario);
             if (usuario == null ||
-                (newCliente.Telefono != null && await mdtecnologiaContext.Clientes.AnyAsync(cliente => cliente.Telefono == newCliente.Telefono)) ||
-                await mdtecnologiaContext.Clientes.AnyAsync(cliente => cliente.Correo == newCliente.Correo) ||
+                (newCliente.Telefono != null && await mdtecnologiaContext.Clientes.AnyAsync(cliente => cliente.Telefono != null && cliente.Telefono == newCliente.Telefono)) ||
+                await mdtecnologiaContext.Clientes.AnyAsync(cliente => cliente.Correo.ToLower().Equals(newCliente.Correo.ToLower())) ||
                 usuario.Cliente != null)
             { return null; }
 
