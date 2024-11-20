@@ -86,6 +86,8 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         public async Task<ActionResult<CategoriaDto>> PutCategoria(Guid id, [FromBody] CategoriaDto categoriaDto)
         {
+            if (id != categoriaDto.Id)
+                return BadRequest(new { id = "Los ID no son iguales" });
             var categoria = await context.Categorias.FindAsync(id);
             if (categoria == null)
                 return NotFound();

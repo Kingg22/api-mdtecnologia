@@ -104,11 +104,11 @@ namespace MD_Tech.Controllers
                 {
                     foreach (var detalle in ventaDto.Detalles)
                     {
-                        if ((detalle.Cantidad < 0) || (detalle.PrecioUnitario.HasValue && detalle.PrecioUnitario < 0) || (detalle.Descuento.HasValue && detalle.Descuento < 0) || (ventaDto.Subtotal.HasValue && ventaDto.Subtotal < 0))
+                        if ((detalle.Cantidad < 1) || (detalle.PrecioUnitario.HasValue && detalle.PrecioUnitario < 0) || (detalle.Descuento.HasValue && detalle.Descuento < 0) || (ventaDto.Subtotal.HasValue && ventaDto.Subtotal < 0))
                         {
                             logsApi.Errores($"Valores negativos en el detalle del producto {detalle.Producto}");
                             await transaction.RollbackAsync();
-                            return BadRequest(new { Detalle_Descuento = $"Valor inválido para el producto {detalle.Producto}" });
+                            return BadRequest(new { Detalle_Numeros = $"Valor inválido para el producto {detalle.Producto}. Los números no pueden ser negativos" });
                         }
 
                         var producto = await mdtecnologiaContext.Productos
@@ -118,20 +118,20 @@ namespace MD_Tech.Controllers
                         {
                             logsApi.Errores("El Producto no esta Registrado para la venta");
                             await transaction.RollbackAsync();
-                            return NotFound(new { DetalleProducto_Producto = $"Producto Invalido ID: {detalle.Producto}" });
+                            return NotFound(new { Detalle_Producto = $"Producto Invalido ID: {detalle.Producto}" });
                         }
                         if (producto.ProductosProveedores.Count == 0)
                         {
                             logsApi.Errores("El producto no tiene proveedores para realizar la venta");
                             await transaction.RollbackAsync();
-                            return NotFound(new { Producto_Proveedores = "El producto no tiene registrado proveedores" });
+                            return NotFound(new { Detalle_Producto_Proveedores = "El producto no tiene registrado proveedores" });
                         }
                         var producto_menor_precio = producto.ProductosProveedores.MinBy(pp => pp.Total);
                         if (producto_menor_precio == null)
                         {
                             logsApi.Errores($"No se pudo determinar el proveedor con menor precio para el producto {producto.Id}");
                             await transaction.RollbackAsync();
-                            return NotFound(new { Producto_Proveedor = "No se pudo encontrar el mejor proveedor para esta venta" });
+                            return NotFound(new { Detalle_Producto_Proveedor = "No se pudo encontrar el mejor proveedor para esta venta" });
                         }
                         var precio = detalle.PrecioUnitario ?? producto_menor_precio.Precio;
                         var sub = precio * detalle.Cantidad;
@@ -181,13 +181,13 @@ namespace MD_Tech.Controllers
             }
         }
 
-        [HttpPatch("estado/{id}")]
+        [HttpPatch("{id}")]
         [Authorize]
         [SwaggerOperation(Summary = "Cambiar el estado de la venta", Description = "Se actualizan el estado de la venta en la base de datos")]
         [SwaggerResponse(200, "Venta actualizada", typeof(Venta))]
         [SwaggerResponse(404, "Venta no encontrada")]
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
-        public async Task<ActionResult<Venta>> UpdateEstadoVenta(Guid id, [FromBody] EstadoVentaEnum newEstado)
+        public async Task<ActionResult<Venta>> UpdateEstadoVenta(Guid id, [FromQuery] EstadoVentaEnum estado)
         {
             try
             {
@@ -197,7 +197,7 @@ namespace MD_Tech.Controllers
                     logsApi.Errores("venta no encontrada.");
                     return NotFound();
                 }
-                venta.Estado = newEstado.ToString();
+                venta.Estado = estado.ToString();
 
                 await mdtecnologiaContext.SaveChangesAsync();
                 return Ok(new { venta });

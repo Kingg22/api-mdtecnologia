@@ -21,10 +21,10 @@ namespace MD_Tech.DTOs
 
         public decimal? Total { get; set; }
 
-        public Guid? DireccionEntrega { get; set; }
-
         [Required]
         public Guid Cliente { get; set; }
+
+        public Guid? DireccionEntrega { get; set; }
 
         public ICollection<DetalleVentaDto> Detalles { get; set; } = [];
 
