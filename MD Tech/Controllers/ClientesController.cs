@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
+using Polly;
 using Polly.Caching;
 using Swashbuckle.AspNetCore.Annotations;
 using Swashbuckle.AspNetCore.Filters;
@@ -95,6 +96,17 @@ namespace MD_Tech.Controllers
                             logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
                             return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} es inválida. Las provincias van del 1 al 10" });
                         }
+                        if(!await mdtecnologiaContext.Provincias.AnyAsync(p=> p.Id==direccionDto.Provincia) || direccionDto.Provincia ==null)
+                        {
+                            logger.Errores($"Provincia: {direccionDto.Provincia} inválida");
+                            return BadRequest(new { Provincia = $"La provincia {direccionDto.Provincia} No se encuentra Registrada" });
+                        
+                        }
+                        if(string.IsNullOrWhiteSpace(direccionDto.Descripcion))
+                        {
+                            logger.Errores("La Descripcion Es invalida");
+                            return BadRequest(new { Descripcion = $"La Descripcion Es invalida" });
+                        }
 
                         var direccion = new Direccion
                         {
@@ -108,12 +120,14 @@ namespace MD_Tech.Controllers
                         {
                             Cliente = cliente.Id,
                             Direccion = direccion.Id
-                        };
-
-                      await mdtecnologiaContext.DireccionesClientes.AddAsync(enlace);
+                        }; 
+                        await mdtecnologiaContext.DireccionesClientes.AddAsync(enlace);
                     }
                 }
-                await mdtecnologiaContext.SaveChangesAsync();
+                await mdtecnologiaContext.SaveChangesAsync();        
+                await mdtecnologiaContext.Entry(cliente).ReloadAsync();
+                await mdtecnologiaContext.Entry(cliente).Collection(d => d.DireccionClientes).LoadAsync();
+                await mdtecnologiaContext.Entry(cliente).Collection(di => di.Direcciones).LoadAsync();
                 await transaction.CommitAsync();
 
                 logger.Informacion("Se ha creado un nuevo cliente");
