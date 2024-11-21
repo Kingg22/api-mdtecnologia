@@ -31,10 +31,9 @@ namespace MD_Tech.Controllers
             return Ok(new
             {
                 proveedores = await mdtecnologiaContext.Proveedores
-                .OrderBy(p => p.Nombre)
-                .AsNoTracking()
-                .Select(p => new ProveedoresDto(p))
-                .ToListAsync()
+                    .AsNoTracking()
+                    .Select(p => new ProveedoresDto(p))
+                    .ToListAsync()
             });
         }
 
@@ -56,40 +55,19 @@ namespace MD_Tech.Controllers
         [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
-        public async Task<ActionResult<ProveedoresDto>> AgregarProvedor([FromBody] ProveedoresDto proveedorDto)
+        public async Task<ActionResult<ProveedoresDto>> AgregarProveedor([FromBody] ProveedoresDto proveedorDto)
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(proveedorDto.Nombre))
-                    return BadRequest(new { nombre = "El nombre no es válido" });
-                if (proveedorDto.Correo != null && !ClientesController.ValidarCorreo(proveedorDto.Correo))
-                    return BadRequest(new { correo = "El correo no és válido" });
-                if (proveedorDto.Correo != null && await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(proveedorDto.Correo.ToLower())))
-                {
-                    logger.Errores("Correo ya en uso");
-                    return BadRequest(new { correo = "correo ya en uso" });
-                }
-                if (proveedorDto.Telefono != null && await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono != null && t.Telefono.Equals(proveedorDto.Telefono)))
-                {
-                    logger.Errores("Telefono ya en uso");
-                    return BadRequest(new { telefono = "teléfono ya en uso" });
-                }
-                if (proveedorDto.Direccion != null)
-                {
-                    if (proveedorDto.Direccion.Id != null)
-                    {
-                        if (await mdtecnologiaContext.Direcciones.FindAsync(proveedorDto.Direccion.Id) == null)
-                        {
-                            logger.Errores("Direccion No Registrada");
-                            return BadRequest(new { direccion = "Direccion no registrada" });
-                        }
-                    }
-                    else
-                        return BadRequest(new { direccion_Id = "No ingresó un Id de dirección" });
-                }
+                var result = await ValidarProveedor(proveedorDto);
+                if (result != null)
+                    return result;
 
                 var proveedor = await CrearProveedor(proveedorDto);
-                return Created(Url.Action(nameof(GetProveedor), "Proveedores", new { id = proveedor.Id }, Request.Scheme), new { proveedor = new ProveedoresDto(proveedor), });
+                await mdtecnologiaContext.SaveChangesAsync();
+                return Created(
+                    Url.Action(nameof(GetProveedor), "Proveedores", new { id = proveedor.Id }, Request.Scheme),
+                    new { proveedor = new ProveedoresDto(proveedor), });
             }
             catch (Exception ex)
             {
@@ -100,66 +78,60 @@ namespace MD_Tech.Controllers
 
         [HttpPost("direccion")]
         [Authorize]
-        [SwaggerOperation(Summary = "Crea un proveedor con su dirección", Description = "Agrega un nuevo proveedor a la base de datos")]
+        [SwaggerOperation(Summary = "Crea un proveedor con su dirección", Description = "Agrega un nuevo proveedor con su dirección a la base de datos")]
         [SwaggerResponse(201, "Proveedor creado", typeof(ProveedoresDto))]
         [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
-        public async Task<ActionResult<ProveedoresDto>> CrearProvedorDireccion([FromBody] ProveedoresDto proveedorDto)
+        public async Task<ActionResult<ProveedoresDto>> CrearProveedorDireccion([FromBody] ProveedoresDto proveedorDto)
         {
             var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             Direccion? direccion = null;
             try
             {
-                if (string.IsNullOrWhiteSpace(proveedorDto.Nombre))
-                    return BadRequest(new { nombre = "El nombre no puede ser null" });
-                if (proveedorDto.Correo != null && !ClientesController.ValidarCorreo(proveedorDto.Correo))
-                    return BadRequest(new { correo = "El correo no és válido" });
-                if (proveedorDto.Correo != null && await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(proveedorDto.Correo.ToLower())))
-                {
-                    logger.Errores("Correo ya en uso");
-                    return BadRequest(new { correo = "correo ya en uso" });
-                }
-                if (proveedorDto.Telefono != null && await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono != null && t.Telefono.Equals(proveedorDto.Telefono)))
-                {
-                    logger.Errores("Telefono ya en uso");
-                    return BadRequest(new { telefono = "teléfono ya en uso" });
-                }
                 if (proveedorDto.Direccion != null)
                 {
-                    if (proveedorDto.Direccion.Id != null)
+                    if (proveedorDto.Direccion.Id != null && await mdtecnologiaContext.Direcciones.AnyAsync(d => d.Id == proveedorDto.Direccion.Id))
                     {
-                        var validarDireccio = await mdtecnologiaContext.Direcciones.FindAsync(proveedorDto.Direccion.Id);
-                        if (validarDireccio != null)
+                        logger.Errores("Dirección Ya Registrada");
+                        return BadRequest(new
                         {
-                            logger.Errores("Direccion Ya Registrada");
-                            return BadRequest(new { direccion_Id = "Id en uso, si no desea crear una dirección nueva utilizar otro endpoint" });
-                        }
+                            direccion_Id = "Id en uso, si no desea crear una dirección nueva utilizar otro endpoint"
+                        });
                     }
+
                     if (proveedorDto.Direccion.Provincia == null)
-                        return BadRequest(new { direccion_Provincia = "la provincia es requerida para crear una dirección" });
+                        return BadRequest(new
+                        { direccion_Provincia = "la provincia es requerida para crear una dirección" });
                     if (!await mdtecnologiaContext.Provincias.AnyAsync(p => p.Id == proveedorDto.Direccion.Provincia))
                         return BadRequest(new { direccion_Provincia = "provincia no es válida, intente nuevamente" });
                     direccion = new Direccion()
                     {
                         Id = proveedorDto.Direccion.Id ?? Guid.NewGuid(),
                         Provincia = (int)proveedorDto.Direccion.Provincia,
-                        Descripcion = proveedorDto.Direccion.Descripcion,
+                        Descripcion = string.IsNullOrWhiteSpace(proveedorDto.Direccion.Descripcion) ? null : proveedorDto.Direccion.Descripcion,
                     };
                     await mdtecnologiaContext.Direcciones.AddAsync(direccion);
-                    await mdtecnologiaContext.SaveChangesAsync();
-                    logger.Informacion("Se ha creado una Direccion");
+                    logger.Informacion("Se ha creado una Dirección");
                 }
                 // Se actualiza la referencia de direcciones
                 proveedorDto.Direccion = new DireccionDto() { Id = direccion?.Id };
+                await mdtecnologiaContext.SaveChangesAsync();
+                // Se valida el resto de campos
+                var result = await ValidarProveedor(proveedorDto);
+                if (result != null)
+                    return result;
 
                 var proveedor = await CrearProveedor(proveedorDto);
+                await mdtecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                return Created(Url.Action(nameof(GetProveedor), "provedor", new { id = proveedor.Id }, Request.Scheme), new { proveedor = new ProveedoresDto(proveedor) });
+                return Created(
+                    Url.Action(nameof(GetProveedor), "Proveedores", new { id = proveedor.Id }, Request.Scheme),
+                    new { proveedor = new ProveedoresDto(proveedor) });
             }
             catch (Exception ex)
             {
-                logger.Excepciones(ex, "Error al crear Provedor y Direccion");
+                logger.Excepciones(ex, "Error al crear Proveedor y Dirección");
                 await transaction.RollbackAsync();
                 return Problem();
             }
@@ -168,9 +140,9 @@ namespace MD_Tech.Controllers
         [HttpPut("{id}")]
         [Authorize]
         [SwaggerOperation(Summary = "Actualiza un proveedor", Description = "Se actualizan todos los campos de un proveedor. No incluye sus relaciones*")]
-        [SwaggerResponse(200, "Proveedor actualizado", typeof(UsuarioDto))]
+        [SwaggerResponse(200, "Proveedor actualizado", typeof(ProveedoresDto))]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
-        [SwaggerResponse(404, "Usuario no encontrado")]
+        [SwaggerResponse(404, "Proveedor no encontrado")]
         [SwaggerResponse(500, "Ocurrió un error inesperado")]
         public async Task<IActionResult> ActualizarProveedor(Guid id, [FromBody] ProveedoresDto changueProveedor)
         {
@@ -181,38 +153,16 @@ namespace MD_Tech.Controllers
                     logger.Errores("El ID del proveedor no coincide.");
                     return BadRequest(new { provedor = "El ID del proveedor no coincide." });
                 }
+
                 var proveedorExistente = await mdtecnologiaContext.Proveedores.FindAsync(id);
                 if (proveedorExistente == null)
                 {
-                    logger.Errores("Proveeddor no encontrado");
-                    return NotFound(new { provedor = "Proveedor no encontrado." });
+                    logger.Errores("Proveedor no encontrado");
+                    return NotFound();
                 }
-                if (string.IsNullOrWhiteSpace(changueProveedor.Nombre))
-                {
-                    logger.Errores("El nombre es invadilo");
-                    return BadRequest(new { nombre = "Nombre invalido" });
-                }
-                // Campos opcionales
-                if (changueProveedor.Telefono != null && string.IsNullOrWhiteSpace(changueProveedor.Telefono))
-                {
-                    logger.Errores("Telefono invalido");
-                    return BadRequest(new { telefono = "Telefono invalido" });
-                }
-                if (changueProveedor.Telefono != null && await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono != null && t.Telefono == changueProveedor.Telefono))
-                {
-                    logger.Errores("El Telefono ya esta en uso");
-                    return BadRequest(new { Telefono = "El telefono ya en uso" });
-                }
-                if (changueProveedor.Correo != null)
-                {
-                    if (!ClientesController.ValidarCorreo(changueProveedor.Correo))
-                        return BadRequest(new { correo = "El correo no és válido" });
-                    if (await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(changueProveedor.Correo.ToLower())))
-                    {
-                        logger.Errores("Correo ya en uso");
-                        return BadRequest(new { correo = "correo ya en uso" });
-                    }
-                }
+                var result = await ValidarProveedor(changueProveedor);
+                if (result != null)
+                    return result;
 
                 proveedorExistente.Nombre = changueProveedor.Nombre;
                 proveedorExistente.Telefono = changueProveedor.Telefono;
@@ -235,7 +185,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(404, "Proveedor no encontrado")]
         public async Task<ActionResult> EliminarProveedor(Guid id)
         {
-            using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
+            await using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             try
             {
                 var proveedor = await mdtecnologiaContext.Proveedores.FindAsync(id);
@@ -244,6 +194,7 @@ namespace MD_Tech.Controllers
                     logger.Depuracion("EL Proveedor a eliminar No Existe");
                     return NotFound();
                 }
+
                 mdtecnologiaContext.Proveedores.Remove(proveedor);
                 await mdtecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
@@ -259,19 +210,52 @@ namespace MD_Tech.Controllers
         }
 
         [SwaggerIgnore]
-        private async Task<Proveedor> CrearProveedor(ProveedoresDto newProvedor)
+        private async Task<Proveedor> CrearProveedor(ProveedoresDto newProveedor)
         {
-            var provedor = new Proveedor()
+            var proveedor = new Proveedor()
             {
-                Correo = newProvedor.Correo,
-                Nombre = newProvedor.Nombre,
-                Direccion = newProvedor.Direccion?.Id,
-                Telefono = newProvedor.Telefono,
+                Correo = newProveedor.Correo,
+                Nombre = newProveedor.Nombre,
+                Direccion = newProveedor.Direccion?.Id,
+                Telefono = newProveedor.Telefono,
             };
-            await mdtecnologiaContext.Proveedores.AddAsync(provedor);
-            await mdtecnologiaContext.SaveChangesAsync();
+            await mdtecnologiaContext.Proveedores.AddAsync(proveedor);
             logger.Informacion("Se ha creado un Proveedor");
-            return provedor;
+            return proveedor;
+        }
+
+        [SwaggerIgnore]
+        private async Task<ActionResult?> ValidarProveedor(ProveedoresDto proveedorDto)
+        {
+            if (string.IsNullOrWhiteSpace(proveedorDto.Nombre))
+                return BadRequest(new { nombre = "El nombre no es válido" });
+
+            if (proveedorDto.Correo != null && !ClientesController.ValidarCorreo(proveedorDto.Correo))
+                return BadRequest(new { correo = "El correo no es válido" });
+            if (proveedorDto.Correo != null && await mdtecnologiaContext.Proveedores.AnyAsync(c => c.Correo != null && c.Correo.ToLower().Equals(proveedorDto.Correo.ToLower())))
+            {
+                logger.Errores("Correo ya en uso");
+                return BadRequest(new { correo = "Correo ya en uso" });
+            }
+
+            if (proveedorDto.Telefono != null && string.IsNullOrWhiteSpace(proveedorDto.Telefono))
+            {
+                logger.Errores("Teléfono invalido");
+                return BadRequest(new { telefono = "Teléfono invalido" });
+            }
+            if (proveedorDto.Telefono != null && await mdtecnologiaContext.Proveedores.AnyAsync(t => t.Telefono != null && t.Telefono.Equals(proveedorDto.Telefono)))
+            {
+                logger.Errores("Teléfono ya en uso");
+                return BadRequest(new { telefono = "Teléfono ya en uso" });
+            }
+
+            if (proveedorDto.Direccion?.Id != null && !await mdtecnologiaContext.Direcciones.AnyAsync(d => d.Id == proveedorDto.Direccion.Id))
+            {
+                logger.Errores("Dirección no registrada");
+                return BadRequest(new { direccion = "Dirección no registrada" });
+            }
+
+            return null;
         }
     }
 }

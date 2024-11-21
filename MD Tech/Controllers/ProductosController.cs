@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Authorization;
 using Swashbuckle.AspNetCore.Annotations;
 using Swashbuckle.AspNetCore.Filters;
 using System.Reflection;
+using System.Text.Json;
 using NodaTime;
 
 namespace MD_Tech.Controllers
@@ -145,102 +146,79 @@ namespace MD_Tech.Controllers
             var producto = await MdTecnologiaContext.Productos.FindAsync(id);
             if (producto == null)
                 return NotFound(new { id = "producto no encontrado" });
-            // Campos obligatorios tipo string
-            if (string.IsNullOrWhiteSpace(productoDto.Nombre) || string.IsNullOrWhiteSpace(productoDto.Marca))
-                return BadRequest(new { fieldsString = "campos como Nombre o Marca son requeridos" });
-            // Descripción no es null se valida tipo string
-            if (productoDto.Descripcion != null && string.IsNullOrWhiteSpace(productoDto.Descripcion))
-                return BadRequest(new { descripcion = "la descripción no puede ser espacios en blanco" });
-            if (productoDto.Categoria != null && await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
-                return NotFound(new { categoria = "categoria de producto no encontrada" });
+            var result = await ValidarCrearProducto(productoDto);
+            if (result != null)
+                return result;
 
-            using var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
+            await using var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
             try
             {
                 producto.Nombre = productoDto.Nombre;
                 producto.Marca = productoDto.Marca;
                 producto.Categoria = productoDto.Categoria;
                 producto.Descripcion = productoDto.Descripcion;
-                await transaction.CreateSavepointAsync("producto");
 
-                if (productoDto.Proveedores != null && productoDto.Proveedores.Count != 0)
+                if (productoDto.Proveedores?.Count > 0)
                 {
-                    try
+                    logger.Informacion("Relaciones de proveedores encontradas, procesando...");
+                    logger.Depuracion("Producto proveedores dto: " + JsonSerializer.Serialize(productoDto.Proveedores));
+                    var proveedoresUnicos = productoDto.Proveedores.Select(pp => pp.Proveedor).Distinct();
+                    logger.Depuracion("Proveedores dto Id unique: " + JsonSerializer.Serialize(proveedoresUnicos));
+                    var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
+                    logger.Depuracion("Proveedores id válidos: " + JsonSerializer.Serialize(proveedoresExistentes));
+                    var productosProveedor = productoDto.Proveedores.Where(proveedorDto => proveedoresExistentes.Contains(proveedorDto.Proveedor));
+                    foreach (var proveedorDto in productosProveedor)
                     {
-                        foreach (var proveedorDto in productoDto.Proveedores)
-                        {
-                            var proveedor = await MdTecnologiaContext.Proveedores.FindAsync(proveedorDto.Proveedor);
-                            if (proveedor == null)
-                            {
-                                logger.Advertencia($"Se ha omitido la relación producto - proveedor con Id {proveedorDto.Proveedor} no encontrado, precio = {proveedorDto.Precio} + impuesto = {proveedorDto.Impuesto}");
-                                continue;
-                            }
-                            var relacion = await MdTecnologiaContext.ProductosProveedores.FirstOrDefaultAsync(pp => pp.Producto == id && pp.Proveedor == proveedorDto.Proveedor);
+                        var relacion = await MdTecnologiaContext.ProductosProveedores.FirstOrDefaultAsync(pp => pp.Producto == id && pp.Proveedor == proveedorDto.Proveedor);
 
-                            if (relacion != null)
-                            {
-                                // Actualizar la relación existente
-                                relacion.Precio = proveedorDto.Precio;
-                                relacion.Impuesto = proveedorDto.Impuesto;
-                                relacion.Total = proveedorDto.Precio + proveedorDto.Impuesto;
-                                relacion.FechaActualizado = proveedorDto.FechaActualizado != null ? (LocalDate)proveedorDto.FechaActualizado : LocalDate.FromDateTime(DateTime.UtcNow);
-                                relacion.Stock = proveedorDto.Stock;
-                            }
-                            else
-                            {
-                                var productoProveedor = new ProductosProveedor()
-                                {
-                                    Producto = id,
-                                    Proveedor = proveedorDto.Proveedor,
-                                    Precio = proveedorDto.Precio,
-                                    Impuesto = proveedorDto.Impuesto,
-                                    Total = proveedorDto.Precio * proveedorDto.Impuesto,
-                                    FechaActualizado = proveedorDto.FechaActualizado != null ? (LocalDate)proveedorDto.FechaActualizado : LocalDate.FromDateTime(DateTime.UtcNow),
-                                    Stock = proveedorDto.Stock
-                                };
-                                await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
-                            }
+                        if (relacion != null)
+                        {
+                            // Actualizar la relación existente
+                            relacion.Precio = proveedorDto.Precio;
+                            relacion.Impuesto = proveedorDto.Impuesto;
+                            relacion.Total = proveedorDto.Precio + proveedorDto.Impuesto;
+                            relacion.FechaActualizado = proveedorDto.FechaActualizado ?? LocalDate.FromDateTime(DateTime.UtcNow);
+                            relacion.Stock = proveedorDto.Stock;
                         }
-                        await MdTecnologiaContext.SaveChangesAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.Excepciones(ex, "Error al actualizar relacionaciones producto - proveedor");
-                        await transaction.RollbackToSavepointAsync("producto");
-                    }
-                }
-                await transaction.CreateSavepointAsync("proveedores");
-
-                if (productoDto.Imagenes != null && productoDto.Imagenes.Count > 0)
-                {
-                    try
-                    {
-                        logger.Informacion("Relaciones de imagenes producto encontradas. Procesando...");
-                        var imagenesValidas = productoDto.Imagenes.Where(imagenDto => !string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url));
-                        foreach (var imagenDto in imagenesValidas)
+                        else
                         {
-                            if (imagenDto.Descripcion != null && string.IsNullOrEmpty(imagenDto.Descripcion))
+                            var productoProveedor = new ProductosProveedor()
                             {
-                                logger.Advertencia($"Colocando null a descripción inválida, url: {imagenDto.Url}");
-                                imagenDto.Descripcion = null;
-                            }
-                            var imagenProducto = new ImagenesProducto()
-                            {
-                                Producto = producto.Id,
-                                Url = imagenDto.Url,
-                                Descripcion = imagenDto.Descripcion,
+                                Producto = id,
+                                Proveedor = proveedorDto.Proveedor,
+                                Precio = proveedorDto.Precio,
+                                Impuesto = proveedorDto.Impuesto,
+                                Total = proveedorDto.Precio * proveedorDto.Impuesto,
+                                FechaActualizado = proveedorDto.FechaActualizado ?? LocalDate.FromDateTime(DateTime.UtcNow),
+                                Stock = proveedorDto.Stock
                             };
-                            await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
+                            await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
                         }
-                        await MdTecnologiaContext.SaveChangesAsync();
                     }
-                    catch (Exception excep)
-                    {
-                        logger.Excepciones(excep, "ha ocurrido un error al guardar las imagenes del producto");
-                        await transaction.RollbackToSavepointAsync("proveedores");
-                    }
+                    // Considerar si eliminar o no lo existente
+                    // var relacionesAEliminar = MdTecnologiaContext.ProductosProveedores.Where(rel => rel.Producto == producto.Id && !proveedoresExistentes.Contains(rel.Proveedor));
+                    // MdTecnologiaContext.ProductosProveedores.RemoveRange(relacionesAEliminar);
                 }
 
+                if (productoDto.Imagenes?.Count > 0)
+                {
+                    logger.Informacion("Relaciones de imágenes producto encontradas. Procesando...");
+                    logger.Depuracion("Imágenes producto Dto: " + JsonSerializer.Serialize(productoDto.Imagenes));
+                    // Añade solo los links nuevos 
+                    var imagenesExistentes = MdTecnologiaContext.ImagenesProductos.Where(imagen => imagen.Producto == producto.Id).Select(imagen => imagen.Url);
+                    var imagenesValidas = productoDto.Imagenes
+                        .Where(imagenDto => !string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url) && !imagenesExistentes.Contains(imagenDto.Url))
+                        .Select(imagenDto => new ImagenesProducto()
+                        {
+                            Producto = producto.Id,
+                            Url = imagenDto.Url,
+                            Descripcion = string.IsNullOrWhiteSpace(imagenDto.Descripcion) ? null : imagenDto.Descripcion,
+                        }).ToList();
+                    if (imagenesValidas.Count > 0)
+                        await MdTecnologiaContext.ImagenesProductos.AddRangeAsync(imagenesValidas);
+                }
+
+                await MdTecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
                 logger.Informacion($"Se ha actualizado el producto {producto.Id}");
                 await MdTecnologiaContext.Entry(producto).ReloadAsync();
@@ -266,18 +244,10 @@ namespace MD_Tech.Controllers
         public async Task<ActionResult<ProductosDto>> PostProductos([FromBody] ProductosDto productoDto)
         {
             logger.Informacion($"Iniciando la creación del producto con ID {productoDto.Id} y nombre {productoDto.Nombre}");
-            if (productoDto.Id != null && await MdTecnologiaContext.Productos.FindAsync(productoDto.Id) != null)
-                return BadRequest(new { Id = "id proporcionado en uso" });
-            // Campos obligatorios tipo string
-            if (string.IsNullOrWhiteSpace(productoDto.Nombre) || string.IsNullOrWhiteSpace(productoDto.Marca))
-                return BadRequest(new { fieldsString = "campos como Nombre o Marca son requeridos" });
-            // Descripción no es null se valida tipo string
-            if (productoDto.Descripcion != null && string.IsNullOrWhiteSpace(productoDto.Descripcion))
-                return BadRequest(new { descripcion = "la descripción no puede ser espacios en blanco" });
-            if (productoDto.Categoria != null && await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
-                return NotFound(new { categoria = "categoria de producto no encontrada" });
-
-            using var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
+            var result = await ValidarCrearProducto(productoDto);
+            if (result != null)
+                return result;
+            await using var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
             try
             {
                 var productos = new Producto()
@@ -288,78 +258,53 @@ namespace MD_Tech.Controllers
                     Categoria = productoDto.Categoria,
                     Descripcion = productoDto.Descripcion,
                 };
-
                 await MdTecnologiaContext.Productos.AddAsync(productos);
+
+                if (productoDto.Proveedores?.Count > 0)
+                {
+                    logger.Informacion("Relaciones de proveedores encontradas, procesando...");
+                    logger.Depuracion("Producto proveedores dto: " + JsonSerializer.Serialize(productoDto.Proveedores));
+                    // Se genera una lista temporal para buscar los id de proveedores en la BD
+                    var proveedoresUnicos = productoDto.Proveedores.Select(pp => pp.Proveedor).Distinct();
+                    logger.Depuracion("Proveedores dto Id unique: " + JsonSerializer.Serialize(proveedoresUnicos));
+                    // lista con todos los ID existentes de la lista anterior
+                    var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
+                    logger.Depuracion("Proveedores id válidos: " + JsonSerializer.Serialize(proveedoresExistentes));
+                    // Se filtra del input solo los productos - proveedor con Id de proveedor válido y se convierte a model
+                    var productosProveedor = productoDto.Proveedores
+                        .Where(proveedorDto => proveedoresExistentes.Contains(proveedorDto.Proveedor))
+                        .Select(proveedorDto =>
+                        new ProductosProveedor()
+                        {
+                            Producto = productos.Id,
+                            Proveedor = proveedorDto.Proveedor,
+                            Precio = proveedorDto.Precio,
+                            Impuesto = proveedorDto.Impuesto,
+                            Total = proveedorDto.Precio + proveedorDto.Impuesto,
+                            FechaActualizado = proveedorDto.FechaActualizado ?? LocalDate.FromDateTime(DateTime.UtcNow),
+                            Stock = proveedorDto.Stock
+                        }).ToList();
+                    if (productosProveedor.Count > 0)
+                        await MdTecnologiaContext.ProductosProveedores.AddRangeAsync(productosProveedor);
+                }
+
+                if (productoDto.Imagenes?.Count > 0)
+                {
+                    logger.Informacion("Relaciones de imágenes producto encontradas. Procesando...");
+                    logger.Depuracion("Imágenes producto Dto: " + JsonSerializer.Serialize(productoDto.Imagenes));
+                    var imagenesValidas = productoDto.Imagenes
+                        .Where(imagenDto => !string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url))
+                        .Select(imagenDto => new ImagenesProducto()
+                        {
+                            Producto = productos.Id,
+                            Url = imagenDto.Url,
+                            Descripcion = string.IsNullOrWhiteSpace(imagenDto.Descripcion) ? null : imagenDto.Descripcion,
+                        }).ToList();
+                    if (imagenesValidas.Count > 0)
+                        await MdTecnologiaContext.ImagenesProductos.AddRangeAsync(imagenesValidas);
+                }
+
                 await MdTecnologiaContext.SaveChangesAsync();
-                await transaction.CreateSavepointAsync("producto");
-
-                if (productoDto.Proveedores != null && productoDto.Proveedores.Count > 0)
-                {
-                    try
-                    {
-                        logger.Informacion("Relaciones de proveedores encontradas, procesando...");
-                        var proveedoresUnicos = productoDto.Proveedores.Select(pp => pp.Proveedor).Distinct().ToList();
-                        var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
-                        foreach (var proveedorDto in productoDto.Proveedores)
-                        {
-                            if (!proveedoresExistentes.Contains(proveedorDto.Proveedor))
-                            {
-                                logger.Advertencia($"Se ha omitido la relación producto - proveedor con Id {proveedorDto.Proveedor} no encontrado, precio = {proveedorDto.Precio} + impuesto = {proveedorDto.Impuesto}");
-                                continue;
-                            }
-                            var productoProveedor = new ProductosProveedor()
-                            {
-                                Producto = productos.Id,
-                                Proveedor = proveedorDto.Proveedor,
-                                Precio = proveedorDto.Precio,
-                                Impuesto = proveedorDto.Impuesto,
-                                Total = proveedorDto.Precio + proveedorDto.Impuesto,
-                                FechaActualizado = proveedorDto.FechaActualizado != null ? (LocalDate)proveedorDto.FechaActualizado : LocalDate.FromDateTime(DateTime.UtcNow),
-                                Stock = proveedorDto.Stock
-                            };
-                            await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
-                        }
-                        await MdTecnologiaContext.SaveChangesAsync();
-                    }
-                    catch (Exception ex)
-                    {
-                        logger.Excepciones(ex, "Excepción al crear producto relacionado a proveedor, revirtiendo a savepoint");
-                        await transaction.RollbackToSavepointAsync("producto");
-                    }
-                }
-
-                await transaction.CreateSavepointAsync("proveedores");
-
-                if (productoDto.Imagenes != null && productoDto.Imagenes.Count > 0)
-                {
-                    try
-                    {
-                        logger.Informacion("Relaciones de imagenes producto encontradas. Procesando...");
-                        var imagenesValidas = productoDto.Imagenes.Where(imagenDto => !string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url));
-                        foreach (var imagenDto in imagenesValidas)
-                        {
-                            if (imagenDto.Descripcion != null && string.IsNullOrEmpty(imagenDto.Descripcion))
-                            {
-                                logger.Advertencia($"Colocando null a descripción inválida, url: {imagenDto.Url}");
-                                imagenDto.Descripcion = null;
-                            }
-                            var imagenProducto = new ImagenesProducto()
-                            {
-                                Producto = productos.Id,
-                                Url = imagenDto.Url,
-                                Descripcion = imagenDto.Descripcion,
-                            };
-                            await MdTecnologiaContext.ImagenesProductos.AddAsync(imagenProducto);
-                        }
-                        await MdTecnologiaContext.SaveChangesAsync();
-                    }
-                    catch (Exception excep)
-                    {
-                        logger.Excepciones(excep, "ha ocurrido un error al guardar las imagenes del producto");
-                        await transaction.RollbackToSavepointAsync("proveedores");
-                    }
-                }
-
                 await transaction.CommitAsync();
                 await MdTecnologiaContext.Entry(productos).ReloadAsync();
                 await MdTecnologiaContext.Entry(productos).Collection(p => p.ProductosProveedores).LoadAsync();
@@ -385,11 +330,11 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(500, "No se pudo guardar la imagen")]
         public async Task<ActionResult> UploadImage(Guid id, IFormFile image)
         {
-            if (image == null || image.Length == 0)
+            if (image.Length == 0)
                 return BadRequest(new { image = "No se ha proporcionado un archivo de imagen válido." });
             if (!image.ContentType.StartsWith("image/"))
                 return BadRequest(new { image = "El archivo debe ser una imagen válida." });
-            // 5 MB en bytes limitado por tema de rendimiento del fronted y costo de almacenamiento
+            // 5 MB en bytes limitados por tema de rendimiento del fronted y costo de almacenamiento
             const long maxSizeInBytes = 5 * 1024 * 1024;
             if (image.Length > maxSizeInBytes)
                 return BadRequest(new { image = "El archivo de imagen excede el tamaño máximo permitido de 5 MB." });
@@ -397,11 +342,12 @@ namespace MD_Tech.Controllers
             var producto = await MdTecnologiaContext.Productos.FindAsync(id);
             if (producto != null)
             {
+                await using var stream = image.OpenReadStream();
                 var result = await storageApi.PutObjectAsync(new StorageApiDto()
                 {
                     Name = image.FileName,
                     Type = image.ContentType,
-                    Stream = image.OpenReadStream(),
+                    Stream = stream,
                 });
                 if (result != null && result.Status && result.Url != null)
                 {
@@ -427,26 +373,19 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(200, "Producto actualizado", typeof(ProductosDto))]
         [SwaggerResponse(404, "Producto no encontrado")]
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
-        public async Task<ActionResult<ProductosDto>> UpdatePrecios(Guid id, List<ProductoProveedorDto> ListProductoProveedorDto)
+        public async Task<ActionResult<ProductosDto>> UpdatePrecios(Guid id, List<ProductoProveedorDto> listProductoProveedorDto)
         {
             var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
             try
             {
                 var producto = await MdTecnologiaContext.Productos.FindAsync(id);
                 if (producto == null)
-                {
-                    await transaction.RollbackAsync();
                     return NotFound();
-                }
-                var proveedoresUnicos = ListProductoProveedorDto.Where(pp => pp.Producto == id).Select(pp => pp.Proveedor).Distinct().ToList();
+
+                var proveedoresUnicos = listProductoProveedorDto.Where(pp => pp.Producto == id).Select(pp => pp.Proveedor).Distinct().ToList();
                 var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
-                foreach (var proveedorDto in ListProductoProveedorDto)
+                foreach (var proveedorDto in listProductoProveedorDto)
                 {
-                    if (id != proveedorDto.Producto)
-                    {
-                        logger.Advertencia($"Se ha omitido la relación producto {proveedorDto.Producto} - proveedor {proveedorDto.Proveedor} ya que no coincide con el Id en routa: {id}");
-                        continue;
-                    }
                     if (!proveedoresExistentes.Contains(proveedorDto.Proveedor))
                     {
                         logger.Advertencia($"Se ha omitido la relación producto - proveedor con Id {proveedorDto.Proveedor} no encontrado, precio = {proveedorDto.Precio} + impuesto = {proveedorDto.Impuesto}");
@@ -461,9 +400,7 @@ namespace MD_Tech.Controllers
                         productoProveedorExistente.Impuesto = proveedorDto.Impuesto;
                         productoProveedorExistente.Total = proveedorDto.Precio + proveedorDto.Impuesto;
                         productoProveedorExistente.Stock = proveedorDto.Stock;
-                        productoProveedorExistente.FechaActualizado = proveedorDto.FechaActualizado != null
-                            ? (LocalDate)proveedorDto.FechaActualizado
-                            : LocalDate.FromDateTime(DateTime.UtcNow);
+                        productoProveedorExistente.FechaActualizado = proveedorDto.FechaActualizado ?? LocalDate.FromDateTime(DateTime.UtcNow);
                     }
                     else
                     {
@@ -475,9 +412,7 @@ namespace MD_Tech.Controllers
                             Impuesto = proveedorDto.Impuesto,
                             Total = proveedorDto.Precio + proveedorDto.Impuesto,
                             Stock = proveedorDto.Stock,
-                            FechaActualizado = proveedorDto.FechaActualizado != null
-                                ? (LocalDate)proveedorDto.FechaActualizado
-                                : LocalDate.FromDateTime(DateTime.UtcNow),
+                            FechaActualizado = proveedorDto.FechaActualizado ?? LocalDate.FromDateTime(DateTime.UtcNow),
                         };
                         await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
                     }
@@ -552,5 +487,18 @@ namespace MD_Tech.Controllers
                    && (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps);
         }
 
+        [SwaggerIgnore]
+        private async Task<ActionResult?> ValidarCrearProducto(ProductosDto productoDto)
+        {
+            // Campos obligatorios tipo string
+            if (string.IsNullOrWhiteSpace(productoDto.Nombre) || string.IsNullOrWhiteSpace(productoDto.Marca))
+                return BadRequest(new { fieldsString = "campos como Nombre o Marca son requeridos" });
+            // Descripción no es null se valida tipo string
+            if (productoDto.Descripcion != null && string.IsNullOrWhiteSpace(productoDto.Descripcion))
+                return BadRequest(new { descripcion = "la descripción no puede ser espacios en blanco" });
+            if (productoDto.Categoria != null && await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
+                return NotFound(new { categoria = "categoría de producto no encontrada" });
+            return null;
+        }
     }
 }

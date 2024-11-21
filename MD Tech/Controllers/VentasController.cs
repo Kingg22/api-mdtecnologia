@@ -1,8 +1,8 @@
-﻿using MD_Tech.Context;
+﻿using System.Text.Json;
+using MD_Tech.Context;
 using MD_Tech.DTOs;
 using MD_Tech.Models;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -41,8 +41,8 @@ namespace MD_Tech.Controllers
         public async Task<ActionResult<Venta>> GetVenta(Guid id)
         {
             var ven = await mdtecnologiaContext.Ventas
-              .Include(venta => venta.DetallesVenta)
-              .FirstOrDefaultAsync(p => p.Id == id);
+                .Include(venta => venta.DetallesVenta)
+                .FirstOrDefaultAsync(p => p.Id == id);
             return ven == null ? NotFound() : Ok(new { venta = ven });
         }
 
@@ -50,21 +50,16 @@ namespace MD_Tech.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "Obtiene los detalles por ID venta", Description = "Devuelve una lista de detalles de la venta")]
         [SwaggerResponse(200, "Operación exitosa", typeof(List<DetalleVenta>))]
-        [SwaggerResponse(404, "Venta no encontrado o sin detalles")]
         public async Task<ActionResult<List<DetalleVenta>>> GetDetalles(Guid id)
         {
-            var detalles = await mdtecnologiaContext.DetallesVentas
-                .Where(d => d.Venta == id)
-                .ToListAsync();
-            if (detalles == null || detalles.Count == 0)
-                return NotFound();
-            return Ok(detalles);
+            return Ok(new
+                { detalles = await mdtecnologiaContext.DetallesVentas.Where(d => d.Venta == id).ToListAsync(), });
         }
 
         [HttpPost]
         [Authorize]
-        [SwaggerOperation(Summary = "Crea un venta con sus detalles", 
-                          Description = "Agrega una nueva venta a la base de datos. Si no se dan valores, se determina el mejor dato almacenado en la base de datos")]
+        [SwaggerOperation(Summary = "Crea un venta con sus detalles",
+            Description = "Agrega una nueva venta a la base de datos. Si no se dan valores, se determina el mejor dato almacenado en la base de datos")]
         [SwaggerResponse(201, "Venta creada", typeof(Venta))]
         [SwaggerResponseHeader(201, "location", "string", "Enlace al recurso creado")]
         [SwaggerResponse(400, "Datos de entrada inválidos")]
@@ -72,106 +67,68 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult<Venta>> AddVenta(VentaDto ventaDto)
         {
-            using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
+            await using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             try
             {
                 var cliente = await mdtecnologiaContext.Clientes
                     .Include(c => c.Direcciones)
                     .FirstOrDefaultAsync(c => c.Id == ventaDto.Cliente);
                 if (cliente == null)
-                    return NotFound(new { Cliente = "Cliente No Existe" });
-                if (cliente.Direcciones.Count == 0)
-                {
-                    logsApi.Errores($"No tiene direcciones registradas el cliente {cliente.Id} para asignarle a su venta");
-                    return NotFound(new { DireccionEntrega = "el cliente no tiene direcciones registradas" });
-                }
-                if (ventaDto.DireccionEntrega == null)
-                    ventaDto.DireccionEntrega = cliente.Direcciones.First().Id;
-                else if (!cliente.Direcciones.Any(d => d.Id == ventaDto.DireccionEntrega))
-                    return BadRequest(new { Direccion_Entrega = "La Direccion ingresada No esta Registrada Por el Cliente" });
+                    return NotFound();
+                var result = await ValidateCliente(cliente, ventaDto.DireccionEntrega);
+                if (result != null)
+                    return result;
 
                 var venta = new Venta()
                 {
+                    Id = ventaDto.Id ?? Guid.NewGuid(),
                     Cliente = ventaDto.Cliente,
                     Estado = ventaDto.Estado.ToString(),
                     Fecha = ventaDto.Fecha ?? LocalDateTime.FromDateTime(DateTime.UtcNow),
-                    DireccionEntrega = (Guid)ventaDto.DireccionEntrega,
+                    DireccionEntrega = ventaDto.DireccionEntrega,
                 };
                 await mdtecnologiaContext.Ventas.AddAsync(venta);
-                await mdtecnologiaContext.SaveChangesAsync();
 
                 if (ventaDto.Detalles.Count > 0)
                 {
                     foreach (var detalle in ventaDto.Detalles)
                     {
-                        if ((detalle.Cantidad < 1) || (detalle.PrecioUnitario.HasValue && detalle.PrecioUnitario < 0) || (detalle.Descuento.HasValue && detalle.Descuento < 0) || (ventaDto.Subtotal.HasValue && ventaDto.Subtotal < 0))
-                        {
-                            logsApi.Errores($"Valores negativos en el detalle del producto {detalle.Producto}");
-                            await transaction.RollbackAsync();
-                            return BadRequest(new { Detalle_Numeros = $"Valor inválido para el producto {detalle.Producto}. Los números no pueden ser negativos" });
-                        }
+                        var resultado = ValidateDetalle(detalle);
+                        if (resultado != null) 
+                            return resultado;
 
                         var producto = await mdtecnologiaContext.Productos
                             .Include(p => p.ProductosProveedores)
-                            .FirstOrDefaultAsync(p=> p.Id==detalle.Producto);
+                            .FirstOrDefaultAsync(p => p.Id == detalle.Producto);
                         if (producto == null)
                         {
                             logsApi.Errores("El Producto no esta Registrado para la venta");
-                            await transaction.RollbackAsync();
                             return NotFound(new { Detalle_Producto = $"Producto Invalido ID: {detalle.Producto}" });
                         }
+
                         if (producto.ProductosProveedores.Count == 0)
                         {
                             logsApi.Errores("El producto no tiene proveedores para realizar la venta");
-                            await transaction.RollbackAsync();
-                            return NotFound(new { Detalle_Producto_Proveedores = "El producto no tiene registrado proveedores" });
+                            return NotFound(new
+                                { Detalle_Producto_Proveedores = "El producto no tiene registrado proveedores" });
                         }
-                        var producto_menor_precio = producto.ProductosProveedores.MinBy(pp => pp.Total);
-                        if (producto_menor_precio == null)
-                        {
-                            logsApi.Errores($"No se pudo determinar el proveedor con menor precio para el producto {producto.Id}");
-                            await transaction.RollbackAsync();
-                            return NotFound(new { Detalle_Producto_Proveedor = "No se pudo encontrar el mejor proveedor para esta venta" });
-                        }
-                        var precio = detalle.PrecioUnitario ?? producto_menor_precio.Precio;
-                        var sub = precio * detalle.Cantidad;
-                        var impuesto = detalle.Impuesto ?? producto_menor_precio.Impuesto;
-                        var descuento = detalle.Descuento ?? decimal.Zero;
-                        var total = Math.Round(sub + impuesto - descuento, 2);
-                        
-                        var detalleVenta = new DetalleVenta()
-                        {
-                            Venta = venta.Id,
-                            Cantidad = detalle.Cantidad,
-                            PrecioUnitario = precio,
-                            Subtotal = sub,
-                            Descuento = descuento,
-                            Impuesto = impuesto,
-                            Total = total,
-                            Producto = detalle.Producto,
-                        };
-                        await mdtecnologiaContext.DetallesVentas.AddAsync(detalleVenta);
+                        var productoMenorPrecio = producto.ProductosProveedores.MinBy(pp => pp.Total);
+                        if (productoMenorPrecio == null)
+                            return Problem($"No se pudo determinar el mejor proveedor para el producto {producto.Id}");
+                        var detalleModel = CreateDetalleVenta(detalle, productoMenorPrecio, venta.Id);
+                        await mdtecnologiaContext.DetallesVentas.AddAsync(detalleModel);
+                        logsApi.Depuracion("Modelo guardado: "+JsonSerializer.Serialize(detalleModel));
                     }
-                    await mdtecnologiaContext.SaveChangesAsync();
                 }
-                await mdtecnologiaContext.Entry(venta).ReloadAsync();
-                await mdtecnologiaContext.Entry(venta).Collection(v => v.DetallesVenta).LoadAsync();
-                // Se hace la suma de todos los detalles para el recibo final de venta
-                venta.CantidadTotalProductos = venta.DetallesVenta.Sum(d => d.Cantidad);
-                venta.Subtotal = venta.DetallesVenta.Sum(d => d.Subtotal);
-                venta.Descuento = venta.DetallesVenta.Sum(d => d.Descuento);
-                venta.Impuesto = venta.DetallesVenta.Sum(d => d.Impuesto);
-                venta.Total = venta.DetallesVenta.Sum(d => d.Total);
-                if (venta.Total != Math.Round(venta.Subtotal + venta.Impuesto - venta.Descuento, 2))
-                {
-                    logsApi.Errores("El total calculado no coincide con la suma de todos los detalles");
-                    await transaction.RollbackAsync();
-                    return Problem("Errores de cálculos para la factura");
-                }
-
+                await mdtecnologiaContext.SaveChangesAsync();
+                var re = await FinalizeVenta(venta);
+                if (re != null)
+                    return re;
+                
                 await mdtecnologiaContext.SaveChangesAsync();
                 await transaction.CommitAsync();
-                return Created(Url.Action(nameof(GetVenta), "Ventas", new { id = venta.Id }, Request.Scheme), new { venta });
+                return Created(Url.Action(nameof(GetVenta), "Ventas", new { id = venta.Id }, Request.Scheme),
+                    new { venta });
             }
             catch (Exception ex)
             {
@@ -197,6 +154,7 @@ namespace MD_Tech.Controllers
                     logsApi.Errores("venta no encontrada.");
                     return NotFound();
                 }
+
                 venta.Estado = estado.ToString();
 
                 await mdtecnologiaContext.SaveChangesAsync();
@@ -236,5 +194,81 @@ namespace MD_Tech.Controllers
             }
         }
 
+        [SwaggerIgnore]
+        private async Task<ActionResult?> ValidateCliente(Cliente cliente, Guid direccionEntrega)
+        {
+            if (cliente.Direcciones.Count == 0)
+            {
+                logsApi.Errores($"No tiene direcciones registradas el cliente {cliente.Id} para asignarle a su venta");
+                return NotFound(new { direcciones = "El cliente no tiene direcciones registradas." });
+            }
+
+            if (!cliente.Direcciones.Any(d => d.Id == direccionEntrega))
+            {
+                logsApi.Errores("La dirección no la tiene registrada el cliente");
+                return BadRequest(
+                    new { direccion_entrega = "La dirección ingresada no está registrada por el cliente" });
+            }
+
+            return null;
+        }
+
+        [SwaggerIgnore]
+        private DetalleVenta CreateDetalleVenta(DetalleVentaDto detalle, ProductosProveedor productoMenorPrecio, Guid ventaId)
+        {
+            var precio = detalle.PrecioUnitario ?? productoMenorPrecio.Precio;
+            var sub = precio * detalle.Cantidad;
+            var impuesto = detalle.Impuesto ?? productoMenorPrecio.Impuesto;
+            var descuento = detalle.Descuento ?? decimal.Zero;
+            var total = Math.Round(sub + impuesto - descuento, 2);
+
+            return new DetalleVenta()
+            {
+                Venta = ventaId,
+                Cantidad = detalle.Cantidad,
+                PrecioUnitario = precio,
+                Subtotal = sub,
+                Descuento = descuento,
+                Impuesto = impuesto,
+                Total = total,
+                Producto = detalle.Producto,
+            };
+        }
+
+        [SwaggerIgnore]
+        private async Task<ActionResult?> FinalizeVenta(Venta venta)
+        {
+            await mdtecnologiaContext.Entry(venta).ReloadAsync();
+            await mdtecnologiaContext.Entry(venta).Collection(v => v.DetallesVenta).LoadAsync();
+
+            venta.CantidadTotalProductos = venta.DetallesVenta.Sum(d => d.Cantidad);
+            venta.Subtotal = venta.DetallesVenta.Sum(d => d.Subtotal);
+            venta.Descuento = venta.DetallesVenta.Sum(d => d.Descuento);
+            venta.Impuesto = venta.DetallesVenta.Sum(d => d.Impuesto);
+            venta.Total = venta.DetallesVenta.Sum(d => d.Total);
+
+            var totalCalculado = Math.Round(venta.Subtotal + venta.Impuesto - venta.Descuento, 2);
+            return venta.Total != totalCalculado 
+                ? Problem("Errores de cálculos para la factura.") 
+                : null;
+        }
+
+        [SwaggerIgnore]
+        private ActionResult? ValidateDetalle(DetalleVentaDto detalle)
+        {
+            if (detalle.Cantidad < 1 ||
+                (detalle.PrecioUnitario.GetValueOrDefault() < 0) ||
+                (detalle.Descuento.GetValueOrDefault() < 0) ||
+                (detalle.Subtotal.GetValueOrDefault() < 0))
+            {
+                logsApi.Errores($"Valores negativos en el detalle del producto {detalle.Producto}");
+                return BadRequest(new
+                {
+                    Detalle_Numeros = $"Valor inválido para el producto {detalle.Producto}. Los números no pueden ser negativos"
+                });
+            }
+
+            return null;
+        }
     }
 }
