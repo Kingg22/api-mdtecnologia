@@ -30,20 +30,20 @@ builder.Services.AddDbContext<MdtecnologiaContext>(options => options.UseNpgsql(
     o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery);
 }));
 
-builder.Services.AddCors(options => options.AddPolicy("AllowAllOrigins", builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
+builder.Services.AddCors(options => options.AddPolicy("AllowAllOrigins", b => b.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader()));
 builder.Services.AddAuthorization();
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(async o =>
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(o =>
 {
     var rsa = System.Security.Cryptography.RSA.Create();
-    rsa.ImportFromPem(await File.ReadAllTextAsync("public.pem"));
+    rsa.ImportFromPem(File.ReadAllText("public.pem"));
     var signKey = new RsaSecurityKey(rsa);
 
     o.RequireHttpsMetadata = false;
-    o.TokenValidationParameters = new()
+    o.TokenValidationParameters = new TokenValidationParameters()
     {
         ValidateAudience = false,
         IssuerSigningKey = signKey,
-        ValidIssuer = "MDTech"
+        ValidIssuer = builder.Configuration.GetValue<string>("Authentication:issuer", "MDTech"),
     };
 });
 
@@ -86,7 +86,7 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 app.UseCors("AllowAllOrigins");
 app.UseAuthentication();
-app.UseAuthorization();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

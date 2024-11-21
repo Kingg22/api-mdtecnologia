@@ -24,7 +24,8 @@ namespace MD_Tech.DTOs
         [Required]
         public Guid Cliente { get; set; }
 
-        public Guid? DireccionEntrega { get; set; }
+        [Required]
+        public Guid DireccionEntrega { get; set; }
 
         public ICollection<DetalleVentaDto> Detalles { get; set; } = [];
 

@@ -53,19 +53,9 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         public async Task<ActionResult<CategoriaDto>> PostCategoria([FromBody] CategoriaDto categoriaDto)
         {
-            if (string.IsNullOrWhiteSpace(categoriaDto.Nombre))
-                return BadRequest(new { nombre = "El nombre de la categoría es obligatorio" });
-            if (categoriaDto.Descripcion != null && string.IsNullOrWhiteSpace(categoriaDto.Descripcion))
-                return BadRequest(new { descripcion = "La descripción es inválida. Puede ser null" });
-            if (categoriaDto.CategoriaPadre != null)
-            {
-                if (categoriaDto.Id != null && categoriaDto.Id == categoriaDto.CategoriaPadre)
-                    return BadRequest(new { categoriaPadre = "La categoría padre no puede ser igual a si misma" });
-                if (!await context.Categorias.AnyAsync(c => c.Id == categoriaDto.CategoriaPadre))
-                    return BadRequest(new { categoriaPadre = "No existe la categoría padre a relacionar" });
-                if (await HasCircularReference(categoriaDto.Id ?? Guid.NewGuid(), categoriaDto.CategoriaPadre))
-                    return BadRequest(new { categoriaPadre = "La relación con esta categoría padre crea una referencia circular" });
-            }
+            var result = await ValidarCategoria(categoriaDto);
+            if (result != null)
+                return result;
             var categoria = new Categoria
             {
                 Id = categoriaDto.Id ?? Guid.NewGuid(),
@@ -75,6 +65,7 @@ namespace MD_Tech.Controllers
             };
             await context.Categorias.AddAsync(categoria);
             await context.SaveChangesAsync();
+            logger.Informacion("Se ha credo una nueva categoría");
             return CreatedAtAction(nameof(GetCategoria), new { id = categoria.Id }, new CategoriaDto(categoria));
         }
 
@@ -91,19 +82,11 @@ namespace MD_Tech.Controllers
             var categoria = await context.Categorias.FindAsync(id);
             if (categoria == null)
                 return NotFound();
-            if (string.IsNullOrWhiteSpace(categoriaDto.Nombre))
-                return BadRequest(new { nombre = "El nombre de la categoría es obligatorio" });
-            if (categoriaDto.Descripcion != null && string.IsNullOrWhiteSpace(categoriaDto.Descripcion))
-                return BadRequest(new { descripcion = "La descripción es inválida. Puede ser null" });
-            if (categoriaDto.CategoriaPadre != null)
-            {
-                if (categoria.Id == categoriaDto.CategoriaPadre)
-                    return BadRequest(new { categoriaPadre = "La categoría padre no puede ser igual a si misma" });
-                if (!await context.Categorias.AnyAsync(c => c.Id == categoriaDto.CategoriaPadre))
-                    return BadRequest(new { categoriaPadre = "No existe la categoría padre a relacionar" });
-                if (await HasCircularReference(categoriaDto.Id ?? Guid.NewGuid(), categoriaDto.CategoriaPadre))
-                    return BadRequest(new { categoriaPadre = "La relación con esta categoría padre crea una referencia circular" });
-            }
+
+            var result = await ValidarCategoria(categoriaDto);
+            if (result != null)
+                return result;
+
             categoria.Nombre = categoriaDto.Nombre;
             categoria.Descripcion = categoriaDto.Descripcion;
             categoria.CategoriaPadre = categoriaDto.CategoriaPadre;
@@ -148,5 +131,24 @@ namespace MD_Tech.Controllers
             return false;
         }
 
+        [SwaggerIgnore]
+        private async Task<ActionResult?> ValidarCategoria(CategoriaDto categoriaDto)
+        {
+            if (string.IsNullOrWhiteSpace(categoriaDto.Nombre))
+                return BadRequest(new { nombre = "El nombre de la categoría es obligatorio" });
+            if (categoriaDto.Descripcion != null && string.IsNullOrWhiteSpace(categoriaDto.Descripcion))
+                return BadRequest(new { descripcion = "La descripción es inválida. Puede ser null" });
+            if (categoriaDto.CategoriaPadre != null)
+            {
+                if (categoriaDto.Id == categoriaDto.CategoriaPadre)
+                    return BadRequest(new { categoriaPadre = "La categoría padre no puede ser igual a si misma" });
+                if (!await context.Categorias.AnyAsync(c => c.Id == categoriaDto.CategoriaPadre))
+                    return BadRequest(new { categoriaPadre = "No existe la categoría padre a relacionar" });
+                if (await HasCircularReference(categoriaDto.Id ?? Guid.NewGuid(), categoriaDto.CategoriaPadre))
+                    return BadRequest(new { categoriaPadre = "La relación con esta categoría padre crea una referencia circular" });
+            }
+
+            return null;
+        }
     }
 }
