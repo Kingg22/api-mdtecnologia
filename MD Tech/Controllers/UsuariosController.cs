@@ -38,20 +38,20 @@ namespace MD_Tech.Controllers
         [Authorize]
         [SwaggerOperation(Summary = "Obtiene todos los usuarios", Description = "Devuelve una lista de usuarios")]
         [SwaggerResponse(200, "Operación exitosa", typeof(List<UsuarioDto>))]
-        public async Task<ActionResult<List<UsuarioDto>>> GetAll([FromQuery] int Limit = 25, [FromQuery] int Page = 0)
+        public async Task<ActionResult<List<UsuarioDto>>> GetAll([FromQuery] PaginationDto paginationDto)
         {
             // TODO colocar filtrado
-            if (Page < 0)
+            if (paginationDto.Page < 0)
                 return BadRequest(new { offset = "el número de página debe ser mayor o igual a 0" });
-            if (Limit < 1)
+            if (paginationDto.Limit < 1)
                 return BadRequest(new { limit = "la cantidad debe ser mayor a 0" });
-            logger.Depuracion($"Pagination page: {Page} Limit {Limit}");
+            logger.Depuracion($"Pagination page: {paginationDto.Page} Limit {paginationDto.Limit}");
 
             var totalUsers = await Mdtecnologia.Usuarios.CountAsync();
-            var hasNextPage = (Page + 1) * Limit < totalUsers;
+            var hasNextPage = (paginationDto.Page + 1) * paginationDto.Limit < totalUsers;
             // Calcula la página anterior que contiene resultados
-            var previousPage = Page - 1;
-            while (previousPage > 0 && previousPage * Limit >= totalUsers)
+            var previousPage = paginationDto.Page - 1;
+            while (previousPage > 0 && previousPage * paginationDto.Limit >= totalUsers)
                 previousPage--;
 
             var nextUrl = hasNextPage
@@ -60,19 +60,19 @@ namespace MD_Tech.Controllers
                     "Usuarios",
                     new
                     {
-                        Limit,
-                        Page = Page + 1
+                        paginationDto.Limit,
+                        Page = paginationDto.Page + 1
                     },
                     Request.Scheme)
                 : null;
 
-            var previousUrl = previousPage >= 0 && previousPage * Limit < totalUsers
+            var previousUrl = previousPage >= 0 && previousPage * paginationDto.Limit < totalUsers
                 ? Url.Action(
                     nameof(GetUsuario),
                     "Usuarios",
                     new
                     {
-                        Limit,
+                        paginationDto.Limit,
                         Page = previousPage
                     },
                     Request.Scheme
@@ -85,8 +85,8 @@ namespace MD_Tech.Controllers
                 previous = previousUrl,
                 usuarios = await Mdtecnologia.Usuarios
                 .OrderBy(u => u.Id)
-                .Skip(Page * Limit)
-                .Take(Limit)
+                .Skip(paginationDto.Page * paginationDto.Limit)
+                .Take(paginationDto.Limit)
                 .Select(u => new UsuarioDto(u))
                 .AsNoTracking()
                 .ToListAsync()
