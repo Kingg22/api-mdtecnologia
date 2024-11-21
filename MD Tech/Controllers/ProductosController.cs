@@ -10,20 +10,21 @@ using Swashbuckle.AspNetCore.Filters;
 using System.Reflection;
 using System.Text.Json;
 using NodaTime;
+using System.Text.RegularExpressions;
 
 namespace MD_Tech.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    public class ProductosController : ControllerBase
+    public partial class ProductosController : ControllerBase
     {
-        private readonly MdtecnologiaContext MdTecnologiaContext;
+        private readonly MdtecnologiaContext context;
         private readonly LogsApi<ProductosController> logger;
         private readonly IStorageApi storageApi;
 
-        public ProductosController(MdtecnologiaContext MdTecnologiaContext, IStorageApi storageApi, LogsApi<ProductosController> logger)
+        public ProductosController(MdtecnologiaContext context, IStorageApi storageApi, LogsApi<ProductosController> logger)
         {
-            this.MdTecnologiaContext = MdTecnologiaContext;
+            this.context = context;
             this.storageApi = storageApi;
             this.logger = logger;
         }
@@ -35,7 +36,7 @@ namespace MD_Tech.Controllers
         {
             if (paginacionDto.Page < 0 || paginacionDto.Limit < 0)
                 return BadRequest(new { paginacion = "las números de paginación o límites no pueden ser negativos" });
-            var query = MdTecnologiaContext.Productos.AsQueryable();
+            var query = context.Productos.AsQueryable();
             if (!string.IsNullOrWhiteSpace(paginacionDto.Nombre))
                 query = query.Where(p => EF.Functions.ILike(p.Nombre, $"%{paginacionDto.Nombre}%"));
             if (!string.IsNullOrWhiteSpace(paginacionDto.Marca))
@@ -44,26 +45,39 @@ namespace MD_Tech.Controllers
                 query = query.Where(p => p.Categoria == paginacionDto.Categoria);
             if (!string.IsNullOrWhiteSpace(paginacionDto.OrderBy))
             {
-                var orderBy = paginacionDto.OrderBy.Split("-");
-                var orderByProperty = orderBy[0];
-                var orderByDirection = orderBy[1].Equals("DESC", StringComparison.OrdinalIgnoreCase);
-                var property = typeof(Producto).GetProperty(orderByProperty, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
-                if (property != null)
+                var regex = OrderByRegex();
+                var match = regex.Match(paginacionDto.OrderBy);
+
+                if (match.Success)
                 {
-                    query = orderByDirection
-                        ? query.OrderByDescending(e => EF.Property<object>(e, property.Name))
-                        : query.OrderBy(e => EF.Property<object>(e, property.Name));
+                    var orderBy = paginacionDto.OrderBy.Split("-");
+                    var orderByProperty = orderBy[0];
+                    var orderByDirection = orderBy.Length > 1 && orderBy[1].Equals("DESC", StringComparison.OrdinalIgnoreCase);
+                    var property = typeof(Producto).GetProperty(orderByProperty, BindingFlags.IgnoreCase | BindingFlags.Public | BindingFlags.Instance);
+                    if (property != null)
+                    {
+                        // Verifica si la propiedad es de tipo ICollection o virtual (no es posible ordenar si no es columna simple)
+                        if (typeof(ICollection<>).IsAssignableFrom(property.PropertyType) || property.GetGetMethod().IsVirtual)
+                        {
+                            return BadRequest(new { OrderBy = "No se puede ordenar por este propiedad." });
+                        }
+                        query = orderByDirection
+                            ? query.OrderByDescending(e => EF.Property<object>(e, property.Name))
+                            : query.OrderBy(e => EF.Property<object>(e, property.Name));
+                    }
+                    else
+                        return BadRequest(new { OrderBy = "No se ha podido determinar la columna para ordenar sus resultados, formato esperado es 'columna' o 'columna-desc'" });
                 }
                 else
-                    return BadRequest(new { OrderBy = "no se ha podido determinar la columna para ordernar sus resultados, formato esperado es 'columna-desc'" });
+                    return BadRequest(new { OrderBy = "Formato inválido. Use 'columna' o 'columna-desc'." });
             }
             else
                 query = query.OrderBy(p => p.Id);
 
-            var totalProducts = await MdTecnologiaContext.Productos.CountAsync();
+            var totalProducts = await context.Productos.CountAsync();
             var hasNextPage = (paginacionDto.Page + 1) * paginacionDto.Limit < totalProducts;
             // Calcula la página anterior que contiene resultados
-            int previousPage = paginacionDto.Page - 1;
+            var previousPage = paginacionDto.Page - 1;
             while (previousPage > 0 && previousPage * paginacionDto.Limit >= totalProducts)
                 previousPage--;
 
@@ -121,7 +135,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(404, "Producto no encontrado")]
         public async Task<ActionResult<ProductosDto>> GetProductos(Guid id)
         {
-            var p = await MdTecnologiaContext.Productos
+            var p = await context.Productos
                 .Include(producto => producto.ProductosProveedores)
                 .Include(p => p.ImagenesProductos)
                 .OrderBy(p => p.Id)
@@ -143,14 +157,14 @@ namespace MD_Tech.Controllers
                 logger.Informacion($"Producto de id {id} no coincide con el body id {productoDto.Id}");
                 return BadRequest(new { id = "El id del body no coincide con la ruta" });
             }
-            var producto = await MdTecnologiaContext.Productos.FindAsync(id);
+            var producto = await context.Productos.FindAsync(id);
             if (producto == null)
                 return NotFound(new { id = "producto no encontrado" });
             var result = await ValidarCrearProducto(productoDto);
             if (result != null)
                 return result;
 
-            await using var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
             try
             {
                 producto.Nombre = productoDto.Nombre;
@@ -164,12 +178,12 @@ namespace MD_Tech.Controllers
                     logger.Depuracion("Producto proveedores dto: " + JsonSerializer.Serialize(productoDto.Proveedores));
                     var proveedoresUnicos = productoDto.Proveedores.Select(pp => pp.Proveedor).Distinct();
                     logger.Depuracion("Proveedores dto Id unique: " + JsonSerializer.Serialize(proveedoresUnicos));
-                    var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
+                    var proveedoresExistentes = await context.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
                     logger.Depuracion("Proveedores id válidos: " + JsonSerializer.Serialize(proveedoresExistentes));
                     var productosProveedor = productoDto.Proveedores.Where(proveedorDto => proveedoresExistentes.Contains(proveedorDto.Proveedor));
                     foreach (var proveedorDto in productosProveedor)
                     {
-                        var relacion = await MdTecnologiaContext.ProductosProveedores.FirstOrDefaultAsync(pp => pp.Producto == id && pp.Proveedor == proveedorDto.Proveedor);
+                        var relacion = await context.ProductosProveedores.FirstOrDefaultAsync(pp => pp.Producto == id && pp.Proveedor == proveedorDto.Proveedor);
 
                         if (relacion != null)
                         {
@@ -192,12 +206,12 @@ namespace MD_Tech.Controllers
                                 FechaActualizado = proveedorDto.FechaActualizado ?? LocalDate.FromDateTime(DateTime.UtcNow),
                                 Stock = proveedorDto.Stock
                             };
-                            await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
+                            await context.ProductosProveedores.AddAsync(productoProveedor);
                         }
                     }
                     // Considerar si eliminar o no lo existente
-                    // var relacionesAEliminar = MdTecnologiaContext.ProductosProveedores.Where(rel => rel.Producto == producto.Id && !proveedoresExistentes.Contains(rel.Proveedor));
-                    // MdTecnologiaContext.ProductosProveedores.RemoveRange(relacionesAEliminar);
+                    // var relacionesAEliminar = context.ProductosProveedores.Where(rel => rel.Producto == producto.Id && !proveedoresExistentes.Contains(rel.Proveedor));
+                    // context.ProductosProveedores.RemoveRange(relacionesAEliminar);
                 }
 
                 if (productoDto.Imagenes?.Count > 0)
@@ -205,7 +219,7 @@ namespace MD_Tech.Controllers
                     logger.Informacion("Relaciones de imágenes producto encontradas. Procesando...");
                     logger.Depuracion("Imágenes producto Dto: " + JsonSerializer.Serialize(productoDto.Imagenes));
                     // Añade solo los links nuevos 
-                    var imagenesExistentes = MdTecnologiaContext.ImagenesProductos.Where(imagen => imagen.Producto == producto.Id).Select(imagen => imagen.Url);
+                    var imagenesExistentes = context.ImagenesProductos.Where(imagen => imagen.Producto == producto.Id).Select(imagen => imagen.Url);
                     var imagenesValidas = productoDto.Imagenes
                         .Where(imagenDto => !string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url) && !imagenesExistentes.Contains(imagenDto.Url))
                         .Select(imagenDto => new ImagenesProducto()
@@ -215,15 +229,15 @@ namespace MD_Tech.Controllers
                             Descripcion = string.IsNullOrWhiteSpace(imagenDto.Descripcion) ? null : imagenDto.Descripcion,
                         }).ToList();
                     if (imagenesValidas.Count > 0)
-                        await MdTecnologiaContext.ImagenesProductos.AddRangeAsync(imagenesValidas);
+                        await context.ImagenesProductos.AddRangeAsync(imagenesValidas);
                 }
 
-                await MdTecnologiaContext.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 await transaction.CommitAsync();
                 logger.Informacion($"Se ha actualizado el producto {producto.Id}");
-                await MdTecnologiaContext.Entry(producto).ReloadAsync();
-                await MdTecnologiaContext.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
-                await MdTecnologiaContext.Entry(producto).Collection(p => p.ImagenesProductos).LoadAsync();
+                await context.Entry(producto).ReloadAsync();
+                await context.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
+                await context.Entry(producto).Collection(p => p.ImagenesProductos).LoadAsync();
                 return Ok(new { producto = new ProductosDto(producto) });
             }
             catch (Exception ex)
@@ -247,7 +261,7 @@ namespace MD_Tech.Controllers
             var result = await ValidarCrearProducto(productoDto);
             if (result != null)
                 return result;
-            await using var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
+            await using var transaction = await context.Database.BeginTransactionAsync();
             try
             {
                 var productos = new Producto()
@@ -258,7 +272,7 @@ namespace MD_Tech.Controllers
                     Categoria = productoDto.Categoria,
                     Descripcion = productoDto.Descripcion,
                 };
-                await MdTecnologiaContext.Productos.AddAsync(productos);
+                await context.Productos.AddAsync(productos);
 
                 if (productoDto.Proveedores?.Count > 0)
                 {
@@ -268,7 +282,7 @@ namespace MD_Tech.Controllers
                     var proveedoresUnicos = productoDto.Proveedores.Select(pp => pp.Proveedor).Distinct();
                     logger.Depuracion("Proveedores dto Id unique: " + JsonSerializer.Serialize(proveedoresUnicos));
                     // lista con todos los ID existentes de la lista anterior
-                    var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
+                    var proveedoresExistentes = await context.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
                     logger.Depuracion("Proveedores id válidos: " + JsonSerializer.Serialize(proveedoresExistentes));
                     // Se filtra del input solo los productos - proveedor con Id de proveedor válido y se convierte a model
                     var productosProveedor = productoDto.Proveedores
@@ -285,7 +299,7 @@ namespace MD_Tech.Controllers
                             Stock = proveedorDto.Stock
                         }).ToList();
                     if (productosProveedor.Count > 0)
-                        await MdTecnologiaContext.ProductosProveedores.AddRangeAsync(productosProveedor);
+                        await context.ProductosProveedores.AddRangeAsync(productosProveedor);
                 }
 
                 if (productoDto.Imagenes?.Count > 0)
@@ -301,14 +315,14 @@ namespace MD_Tech.Controllers
                             Descripcion = string.IsNullOrWhiteSpace(imagenDto.Descripcion) ? null : imagenDto.Descripcion,
                         }).ToList();
                     if (imagenesValidas.Count > 0)
-                        await MdTecnologiaContext.ImagenesProductos.AddRangeAsync(imagenesValidas);
+                        await context.ImagenesProductos.AddRangeAsync(imagenesValidas);
                 }
 
-                await MdTecnologiaContext.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 await transaction.CommitAsync();
-                await MdTecnologiaContext.Entry(productos).ReloadAsync();
-                await MdTecnologiaContext.Entry(productos).Collection(p => p.ProductosProveedores).LoadAsync();
-                await MdTecnologiaContext.Entry(productos).Collection(p => p.ImagenesProductos).LoadAsync();
+                await context.Entry(productos).ReloadAsync();
+                await context.Entry(productos).Collection(p => p.ProductosProveedores).LoadAsync();
+                await context.Entry(productos).Collection(p => p.ImagenesProductos).LoadAsync();
                 logger.Informacion($"Se ha creado un nuevo producto Id: {productos.Id} Nombre: {productos.Nombre}");
                 return Created(Url.Action(nameof(GetProductos), "Productos", new { id = productos.Id }, Request.Scheme), new { producto = new ProductosDto(productos) });
             }
@@ -339,7 +353,7 @@ namespace MD_Tech.Controllers
             if (image.Length > maxSizeInBytes)
                 return BadRequest(new { image = "El archivo de imagen excede el tamaño máximo permitido de 5 MB." });
 
-            var producto = await MdTecnologiaContext.Productos.FindAsync(id);
+            var producto = await context.Productos.FindAsync(id);
             if (producto != null)
             {
                 await using var stream = image.OpenReadStream();
@@ -357,7 +371,7 @@ namespace MD_Tech.Controllers
                         Descripcion = result.Name,
                         Url = result.Url.ToString(),
                     });
-                    await MdTecnologiaContext.SaveChangesAsync();
+                    await context.SaveChangesAsync();
                     return Accepted(result.Url);
                 }
                 else
@@ -375,15 +389,15 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
         public async Task<ActionResult<ProductosDto>> UpdatePrecios(Guid id, List<ProductoProveedorDto> listProductoProveedorDto)
         {
-            var transaction = await MdTecnologiaContext.Database.BeginTransactionAsync();
+            var transaction = await context.Database.BeginTransactionAsync();
             try
             {
-                var producto = await MdTecnologiaContext.Productos.FindAsync(id);
+                var producto = await context.Productos.FindAsync(id);
                 if (producto == null)
                     return NotFound();
 
                 var proveedoresUnicos = listProductoProveedorDto.Where(pp => pp.Producto == id).Select(pp => pp.Proveedor).Distinct().ToList();
-                var proveedoresExistentes = await MdTecnologiaContext.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
+                var proveedoresExistentes = await context.Proveedores.Where(p => proveedoresUnicos.Contains(p.Id)).Select(p => p.Id).ToListAsync();
                 foreach (var proveedorDto in listProductoProveedorDto)
                 {
                     if (!proveedoresExistentes.Contains(proveedorDto.Proveedor))
@@ -392,7 +406,7 @@ namespace MD_Tech.Controllers
                         continue;
                     }
 
-                    var productoProveedorExistente = await MdTecnologiaContext.ProductosProveedores.FirstOrDefaultAsync(pp => pp.Producto == id && pp.Proveedor == proveedorDto.Proveedor);
+                    var productoProveedorExistente = await context.ProductosProveedores.FirstOrDefaultAsync(pp => pp.Producto == id && pp.Proveedor == proveedorDto.Proveedor);
                     if (productoProveedorExistente != null)
                     {
                         // Actualizar si ya existe
@@ -414,14 +428,14 @@ namespace MD_Tech.Controllers
                             Stock = proveedorDto.Stock,
                             FechaActualizado = proveedorDto.FechaActualizado ?? LocalDate.FromDateTime(DateTime.UtcNow),
                         };
-                        await MdTecnologiaContext.ProductosProveedores.AddAsync(productoProveedor);
+                        await context.ProductosProveedores.AddAsync(productoProveedor);
                     }
                 }
-                await MdTecnologiaContext.SaveChangesAsync();
+                await context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                await MdTecnologiaContext.Entry(producto).ReloadAsync();
-                await MdTecnologiaContext.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
+                await context.Entry(producto).ReloadAsync();
+                await context.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
                 return Ok(new { producto = new ProductosDto(producto) });
             }
             catch (Exception ex)
@@ -439,12 +453,12 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(404, "Producto no encontrado")]
         public async Task<ActionResult> DeleteProductos(Guid id)
         {
-            var productos = await MdTecnologiaContext.Productos.FindAsync(id);
+            var productos = await context.Productos.FindAsync(id);
             if (productos == null)
                 return NotFound();
             logger.Advertencia($"Se va a eliminar el producto con Id: {id} y nombre: {productos.Nombre}");
-            MdTecnologiaContext.Productos.Remove(productos);
-            await MdTecnologiaContext.SaveChangesAsync();
+            context.Productos.Remove(productos);
+            await context.SaveChangesAsync();
 
             return NoContent();
         }
@@ -457,7 +471,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(500, "No se pudo eliminar la imagen en el servicio")]
         public async Task<ActionResult> DeleteImagenes(Guid id, Guid idImagen)
         {
-            var producto = await MdTecnologiaContext.Productos.Include(p => p.ImagenesProductos).FirstOrDefaultAsync(p => p.Id == id);
+            var producto = await context.Productos.Include(p => p.ImagenesProductos).FirstOrDefaultAsync(p => p.Id == id);
             if (producto == null)
                 return NotFound(new { producto = "No fue encontrado el producto" });
             var imagen = producto.ImagenesProductos.FirstOrDefault(imagenes => imagenes.Id == idImagen);
@@ -469,11 +483,11 @@ namespace MD_Tech.Controllers
             var response = await storageApi.DeleteObjectAsync(imagen.Descripcion);
             if (response)
             {
-                MdTecnologiaContext.Remove(imagen);
-                await MdTecnologiaContext.SaveChangesAsync();
-                await MdTecnologiaContext.Entry(producto).ReloadAsync();
-                await MdTecnologiaContext.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
-                await MdTecnologiaContext.Entry(producto).Collection(p => p.ImagenesProductos).LoadAsync();
+                context.Remove(imagen);
+                await context.SaveChangesAsync();
+                await context.Entry(producto).ReloadAsync();
+                await context.Entry(producto).Collection(p => p.ProductosProveedores).LoadAsync();
+                await context.Entry(producto).Collection(p => p.ImagenesProductos).LoadAsync();
                 logger.Advertencia($"Se ha eliminado una imagen del producto {producto.Id}");
                 return Ok(new ProductosDto(producto));
             }
@@ -496,9 +510,12 @@ namespace MD_Tech.Controllers
             // Descripción no es null se valida tipo string
             if (productoDto.Descripcion != null && string.IsNullOrWhiteSpace(productoDto.Descripcion))
                 return BadRequest(new { descripcion = "la descripción no puede ser espacios en blanco" });
-            if (productoDto.Categoria != null && await MdTecnologiaContext.Categorias.FindAsync(productoDto.Categoria) == null)
+            if (productoDto.Categoria != null && await context.Categorias.FindAsync(productoDto.Categoria) == null)
                 return NotFound(new { categoria = "categoría de producto no encontrada" });
             return null;
         }
+
+        [GeneratedRegex(@"^(?<property>\w+)(-(?<direction>asc|desc))?$", RegexOptions.IgnoreCase, "es-PA")]
+        private static partial Regex OrderByRegex();
     }
 }
