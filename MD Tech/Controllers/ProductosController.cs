@@ -74,7 +74,7 @@ namespace MD_Tech.Controllers
             else
                 query = query.OrderBy(p => p.Id);
 
-            var totalProducts = await context.Productos.CountAsync();
+            var totalProducts = await query.CountAsync();
             var hasNextPage = (paginacionDto.Page + 1) * paginacionDto.Size < totalProducts;
             // Calcula la página anterior que contiene resultados
             var previousPage = paginacionDto.Page - 1;
