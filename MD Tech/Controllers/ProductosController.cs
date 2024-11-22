@@ -446,6 +446,50 @@ namespace MD_Tech.Controllers
             }
         }
 
+        [HttpPatch("image/{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Actualiza las imágenes de un producto", Description = "Agrega o actualiza una lista de imágenes de un producto a la base de datos")]
+        [SwaggerResponse(200, "Producto actualizado", typeof(ProductosDto))]
+        [SwaggerResponse(404, "Producto no encontrado")]
+        [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
+        public async Task<ActionResult<ProductosDto>> UpdateImagenes(Guid id, List<ImagenesProductoDto> listImagenesProducto)
+        {
+            var productoId = listImagenesProducto.Select(lp => lp.Producto).Distinct();
+            if (productoId.Any(pid => pid != id))
+            {
+                logger.Informacion($"Producto de id {id} no coincide con todos los id del body");
+                return BadRequest(new { id = "No todos los id del body no coincide con la ruta" });
+            }
+            var producto = await context.Productos.FindAsync(id);
+            if (producto == null)
+                return NotFound(new { id = "producto no encontrado" });
+            
+            if (listImagenesProducto.Count > 0)
+            {
+                logger.Informacion("Relaciones de imágenes producto encontradas. Procesando...");
+                logger.Depuracion("Imágenes producto Dto: " + JsonSerializer.Serialize(listImagenesProducto));
+                // Añade solo los links nuevos 
+                var imagenesExistentes = context.ImagenesProductos.Where(imagen => imagen.Producto == producto.Id).Select(imagen => imagen.Url);
+                var imagenesValidas = listImagenesProducto
+                    .Where(imagenDto => !string.IsNullOrWhiteSpace(imagenDto.Url) && IsValidUrl(imagenDto.Url) && !imagenesExistentes.Contains(imagenDto.Url))
+                    .Select(imagenDto => new ImagenesProducto()
+                    {
+                        Producto = producto.Id,
+                        Url = imagenDto.Url,
+                        Descripcion = string.IsNullOrWhiteSpace(imagenDto.Descripcion) ? null : imagenDto.Descripcion,
+                    }).ToList();
+                if (imagenesValidas.Count > 0)
+                    await context.ImagenesProductos.AddRangeAsync(imagenesValidas);
+            }
+            else
+                return BadRequest(new { imagenes = "la lista está vacía, ingrese datos válidos" });
+
+            await context.SaveChangesAsync();
+            await context.Entry(producto).ReloadAsync();
+            await context.Entry(producto).Collection(p => p.ImagenesProductos).LoadAsync();
+            return Ok(new { producto = new ProductosDto(producto) });
+        }
+
         [HttpDelete("{id}")]
         [Authorize]
         [SwaggerOperation(Summary = "Elimina un producto", Description = "Se elimina un producto de la base de datos")]
