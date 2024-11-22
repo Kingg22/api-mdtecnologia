@@ -5,9 +5,10 @@ namespace MD_Tech.DTOs
     public class RestoreDto
     {
         [Required]
-        public required string Username { get; set; }
+        public string Username { get; set; } = null!;
+
         [Required]
         [StringLength(70, MinimumLength = 8)]
-        public required string Password { get; set; }
+        public string Password { get; set; } = null!;
     }
 }

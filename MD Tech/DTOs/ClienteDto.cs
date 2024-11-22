@@ -34,13 +34,7 @@ namespace MD_Tech.DTOs
             Correo = cliente.Correo;
             Telefono = cliente.Telefono;
             IdUsuario = cliente.Usuario;
-            Direcciones = cliente.Direcciones.Select(d => new DireccionDto()
-            {
-                Id = d.Id,
-                Descripcion = d.Descripcion,
-                CreatedAt = d.CreatedAt,
-                Provincia = d.Provincia,
-            }).ToList();
+            Direcciones = cliente.Direcciones.Select(d => new DireccionDto(d)).ToList();
         }
     }
 }

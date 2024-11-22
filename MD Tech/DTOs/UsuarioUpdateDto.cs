@@ -13,7 +13,7 @@ namespace MD_Tech.DTOs
 
         [Required]
         [StringLength(70, MinimumLength = 8)]
-        public required string Password { get; set; }
+        public string Password { get; set; } = null!;
 
         public bool Disabled { get; set; } = false;
 

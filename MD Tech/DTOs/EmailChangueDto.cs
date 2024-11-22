@@ -2,7 +2,7 @@
 
 namespace MD_Tech.DTOs
 { 
-    public class EmailChagueDto 
+    public class EmailChangueDto 
     {
         [Required]
         public required Guid Id { get; set; }

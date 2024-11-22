@@ -4,12 +4,7 @@ namespace MD_Tech
 {
     public class LogsApi<T>
     {
-        private readonly Logger LOGGER;
-
-        public LogsApi()
-        {
-            LOGGER = LogManager.GetLogger(typeof(T).FullName);
-        }
+        private readonly Logger LOGGER = LogManager.GetLogger(typeof(T).FullName);
 
         public void Informacion(string mensaje)
         {

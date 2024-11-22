@@ -43,36 +43,36 @@ namespace MD_Tech.Controllers
             // TODO colocar filtrado
             if (paginationDto.Page < 0)
                 return BadRequest(new { offset = "el número de página debe ser mayor o igual a 0" });
-            if (paginationDto.Limit < 1)
+            if (paginationDto.Size < 1)
                 return BadRequest(new { limit = "la cantidad debe ser mayor a 0" });
-            logger.Depuracion($"Pagination page: {paginationDto.Page} Limit {paginationDto.Limit}");
+            logger.Depuracion($"Pagination page: {paginationDto.Page} Size {paginationDto.Size}");
 
             var totalUsers = await Mdtecnologia.Usuarios.CountAsync();
-            var hasNextPage = (paginationDto.Page + 1) * paginationDto.Limit < totalUsers;
+            var hasNextPage = (paginationDto.Page + 1) * paginationDto.Size < totalUsers;
             // Calcula la página anterior que contiene resultados
             var previousPage = paginationDto.Page - 1;
-            while (previousPage > 0 && previousPage * paginationDto.Limit >= totalUsers)
+            while (previousPage > 0 && previousPage * paginationDto.Size >= totalUsers)
                 previousPage--;
 
             var nextUrl = hasNextPage
                 ? Url.Action(
                     nameof(GetUsuario),
                     "Usuarios",
-                    new
+                    new PaginationDto
                     {
-                        paginationDto.Limit,
+                        Size = paginationDto.Size,
                         Page = paginationDto.Page + 1
                     },
                     Request.Scheme)
                 : null;
 
-            var previousUrl = previousPage >= 0 && previousPage * paginationDto.Limit < totalUsers
+            var previousUrl = previousPage >= 0 && previousPage * paginationDto.Size < totalUsers
                 ? Url.Action(
                     nameof(GetUsuario),
                     "Usuarios",
-                    new
+                    new PaginationDto
                     {
-                        paginationDto.Limit,
+                        Size = paginationDto.Size,
                         Page = previousPage
                     },
                     Request.Scheme
@@ -85,8 +85,8 @@ namespace MD_Tech.Controllers
                 previous = previousUrl,
                 usuarios = await Mdtecnologia.Usuarios
                 .OrderBy(u => u.Id)
-                .Skip(paginationDto.Page * paginationDto.Limit)
-                .Take(paginationDto.Limit)
+                .Skip(paginationDto.Page * paginationDto.Size)
+                .Take(paginationDto.Size)
                 .Select(u => new UsuarioDto(u))
                 .AsNoTracking()
                 .ToListAsync()
@@ -228,6 +228,7 @@ namespace MD_Tech.Controllers
             usuario.Username = usuarioDto.Username;
             usuario.Password = BCrypt.Net.BCrypt.HashPassword(usuarioDto.Password);
             usuario.Rol = usuarioDto.Rol.ToString();
+            usuario.Disabled = usuarioDto.Disabled;
             await Mdtecnologia.SaveChangesAsync();
             return Ok(new { usuario = new UsuarioDto(usuario) });
         }

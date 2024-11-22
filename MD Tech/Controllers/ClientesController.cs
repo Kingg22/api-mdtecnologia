@@ -183,7 +183,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(400, "Datos de entrada inválidos")]
         [SwaggerResponse(404, "Cliente no encontrado")]
         [SwaggerResponse(500, "Ha ocurrido un error inesperado")]
-        public async Task<ActionResult> CambiarCorreo(Guid id, [FromBody] EmailChagueDto newCorreo)
+        public async Task<ActionResult> CambiarCorreo(Guid id, [FromBody] EmailChangueDto newCorreo)
         {
             await using var transaction = await mdtecnologiaContext.Database.BeginTransactionAsync();
             try
