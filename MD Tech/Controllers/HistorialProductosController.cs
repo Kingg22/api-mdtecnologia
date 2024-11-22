@@ -24,7 +24,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(200, "Operación exitosa", typeof(List<HistorialProducto>))]
         public async Task<ActionResult<List<HistorialProducto>>> GetHistorialProducto()
         {
-            return Ok(new { historial = await context.HistorialProductos.ToListAsync() });
+            return Ok(new { historial = await context.HistorialProductos.AsNoTracking().ToListAsync() });
         }
 
         [HttpGet("{id}")]
@@ -44,7 +44,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(200, "Operación exitosa", typeof(List<HistorialProducto>))]
         public async Task<ActionResult<List<HistorialProducto>>> GetHistorialProductoByProducto(Guid id)
         {
-            return Ok(new { historial = await context.HistorialProductos.Where(h => h.Producto == id).ToListAsync() });
+            return Ok(new { historial = await context.HistorialProductos.Where(h => h.Producto == id).AsNoTracking().ToListAsync() });
         }
     }
 }

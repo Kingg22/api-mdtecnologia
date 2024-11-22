@@ -256,8 +256,8 @@ namespace MD_Tech.Controllers
         [SwaggerIgnore]
         private async Task<Cliente?> CrearCliente(ClienteDto newCliente)
         {
-            var usuario = await mdtecnologiaContext.Usuarios.FindAsync(newCliente.IdUsuario);
-            if (usuario == null ||
+            var usuario = await mdtecnologiaContext.Usuarios.Include(c => c.Cliente).FirstOrDefaultAsync(c => c.Id ==  newCliente.IdUsuario);
+            if (usuario != null ||
                 (newCliente.Telefono != null && await mdtecnologiaContext.Clientes.AnyAsync(cliente => cliente.Telefono != null && cliente.Telefono == newCliente.Telefono)) ||
                 await mdtecnologiaContext.Clientes.AnyAsync(cliente => cliente.Correo.ToLower().Equals(newCliente.Correo.ToLower())) ||
                 usuario.Cliente != null)
