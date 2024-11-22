@@ -10,10 +10,5 @@
         public string? Marca { get; set; }
         
         public Guid? Categoria { get; set; }
-        
-        /// <summary>
-        /// Formato esperado = nombre-desc o nombre-asc o nombre
-        /// </summary>
-        public string? OrderBy { get; set; }
     }
 }

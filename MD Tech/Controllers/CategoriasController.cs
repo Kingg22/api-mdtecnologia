@@ -31,6 +31,7 @@ namespace MD_Tech.Controllers
             {
                 categorias = await context.Categorias
                 .Select(c => new CategoriaDto(c))
+                .AsNoTracking()
                 .ToListAsync()
             });
         }

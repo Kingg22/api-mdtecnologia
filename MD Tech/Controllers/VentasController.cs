@@ -30,7 +30,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(200, "Operación exitosa", typeof(List<Venta>))]
         public async Task<ActionResult<List<Venta>>> GetVenta()
         {
-            return Ok(new { ventas = await mdtecnologiaContext.Ventas.Include(v => v.DetallesVenta).ToListAsync() });
+            return Ok(new { ventas = await mdtecnologiaContext.Ventas.Include(v => v.DetallesVenta).AsNoTracking().ToListAsync() });
         }
 
         [HttpGet("{id}")]
@@ -46,14 +46,27 @@ namespace MD_Tech.Controllers
             return ven == null ? NotFound() : Ok(new { venta = ven });
         }
 
-        [HttpGet("Detalles/{id}")]
+        [HttpGet("detalles/{id}")]
         [Authorize]
         [SwaggerOperation(Summary = "Obtiene los detalles por ID venta", Description = "Devuelve una lista de detalles de la venta")]
         [SwaggerResponse(200, "Operación exitosa", typeof(List<DetalleVenta>))]
         public async Task<ActionResult<List<DetalleVenta>>> GetDetalles(Guid id)
         {
+            return Ok(new { detalles = await mdtecnologiaContext.DetallesVentas
+                .Where(d => d.Venta == id).AsNoTracking().ToListAsync(), });
+        }
+
+        [HttpGet("cliente/{id}")]
+        [Authorize]
+        [SwaggerOperation(Summary = "Obtiene los detalles por ID cliente", Description = "Devuelve una lista de detalles de las ventas para el cliente")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(List<Venta>))]
+        public async Task<ActionResult<List<Venta>>> GetVentasUsuario(Guid id)
+        {
             return Ok(new
-                { detalles = await mdtecnologiaContext.DetallesVentas.Where(d => d.Venta == id).ToListAsync(), });
+            {
+                ventas = await mdtecnologiaContext.Ventas.Include(v => v.DetallesVenta)
+                    .Where(v => v.Cliente == id).AsNoTracking().ToListAsync()
+            });
         }
 
         [HttpPost]

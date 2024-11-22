@@ -143,6 +143,14 @@ namespace MD_Tech.Controllers
             return p == null ? NotFound() : Ok(new { producto = new ProductosDto(p) });
         }
 
+        [HttpGet("marcas")]
+        [SwaggerOperation(Summary = "Obtiene todas las marcas de productos", Description = "Devuelve una lista de marcas")]
+        [SwaggerResponse(200, "Operación exitosa", typeof(List<string>))]
+        public async Task<ActionResult<List<string>>> GetMarcas()
+        {
+            return Ok(new { marcas = await context.Productos.Select(p => p.Marca).Distinct().AsNoTracking().ToListAsync() });
+        }
+
         [HttpPut("{id}")]
         [Authorize]
         [SwaggerOperation(Summary = "Actualiza un producto", Description = "Se actualizan todos los campos de un producto")]
