@@ -63,6 +63,7 @@ namespace MD_Tech.Controllers
                 Nombre = categoriaDto.Nombre,
                 Descripcion = categoriaDto.Descripcion,
                 CategoriaPadre = categoriaDto.CategoriaPadre,
+                ImagenUrl = categoriaDto.ImagenUrl,
             };
             await context.Categorias.AddAsync(categoria);
             await context.SaveChangesAsync();
@@ -91,6 +92,7 @@ namespace MD_Tech.Controllers
             categoria.Nombre = categoriaDto.Nombre;
             categoria.Descripcion = categoriaDto.Descripcion;
             categoria.CategoriaPadre = categoriaDto.CategoriaPadre;
+            categoria.ImagenUrl = categoriaDto.ImagenUrl;
             await context.SaveChangesAsync();
 
             return Ok(new CategoriaDto(categoria));
@@ -139,6 +141,8 @@ namespace MD_Tech.Controllers
                 return BadRequest(new { nombre = "El nombre de la categoría es obligatorio" });
             if (categoriaDto.Descripcion != null && string.IsNullOrWhiteSpace(categoriaDto.Descripcion))
                 return BadRequest(new { descripcion = "La descripción es inválida. Puede ser null" });
+            if (categoriaDto.ImagenUrl != null && !ProductosController.IsValidUrl(categoriaDto.ImagenUrl))
+                return BadRequest(new { imagen_url = "La imagen no es válida" });
             if (categoriaDto.CategoriaPadre != null)
             {
                 if (categoriaDto.Id == categoriaDto.CategoriaPadre)

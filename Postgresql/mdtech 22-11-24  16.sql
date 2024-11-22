@@ -77,6 +77,7 @@ CREATE TABLE categorias (
 	nombre VARCHAR(50) NOT NULL,
 	descripcion TEXT,
 	categoria_padre UUID,
+	imagen_url text,
 	FOREIGN KEY (categoria_padre) REFERENCES categorias(id) ON DELETE SET NULL ON UPDATE CASCADE
 )
 

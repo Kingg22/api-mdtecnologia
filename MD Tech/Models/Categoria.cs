@@ -20,6 +20,9 @@ public partial class Categoria
     [Column("categoria_padre")]
     public Guid? CategoriaPadre { get; set; }
 
+    [Column("imagen_url")]
+    public string? ImagenUrl { get; set; }
+
     [ForeignKey("CategoriaPadre")]
     [InverseProperty("InverseCategoriaPadreNavigation")]
     public virtual Categoria? CategoriaPadreNavigation { get; set; }
