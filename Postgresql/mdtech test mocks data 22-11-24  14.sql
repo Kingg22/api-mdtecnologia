@@ -1,16 +1,16 @@
 -- Datos mocks (falsos) de pruebas 
-INSERT INTO public.categorias(id, nombre, descripcion, categoria_padre)
+INSERT INTO public.categorias(id, nombre, descripcion, categoria_padre, imagen_url)
 VALUES
-('1f6c6de1-1a2b-4c3d-a6b8-9f7e1b6d4c1a', 'Artículos de Oficina', 'Materiales y equipos para oficina', NULL),
-('2a7d8fe2-2b3c-5d4e-b7c9-0a8f2c7e5d2b', 'Componentes', 'Partes para equipos tecnológicos', NULL),
-('47806a2e-fb2d-4449-b357-89202ce4b3bb', 'Accesorios', 'Complementos para dispositivos tecnológicos', NULL),
-('3af5adef-0d53-4f49-9eda-48e667162ebe', 'Monitores', 'Pantallas de diversos tamaños y resoluciones', NULL),
-('0a88ebb9-c879-486b-bb12-bfc09153af5a', 'Equipos', 'Equipos completos como computadoras y laptops', NULL),
-('1b85bd80-f6ac-4438-a93b-127e966f80a8', 'Impresoras', 'Equipos de impresión y multifuncionales', NULL),
-('1881b904-8626-43cc-b5ac-e84d0af7a8fb', 'Redes y Conectividad', 'Equipos de comunicación y redes', NULL),
-('f21714f3-ac33-4834-8927-a32b79535ce4', 'Almacenamiento', 'Dispositivos para guardar datos', NULL),
-('87e561ea-1ea0-49c2-9e94-dc1472a40cef', 'Software', 'Programas y licencias digitales', NULL),
-('20d134d1-27bf-49e9-b9aa-812179cdc92e', 'Gaming', 'Equipos y accesorios para videojuegos', NULL);
+('1f6c6de1-1a2b-4c3d-a6b8-9f7e1b6d4c1a', 'Artículos de Oficina', 'Materiales y equipos para oficina', NULL, 'https://jadetec.net/site/assets/files/1055/utiles-de-oficina.jpg'),
+('2a7d8fe2-2b3c-5d4e-b7c9-0a8f2c7e5d2b', 'Componentes', 'Partes para equipos tecnológicos', NULL, 'https://geekelectronica.com/wp-content/uploads/2020/09/Componentes.jpg'),
+('47806a2e-fb2d-4449-b357-89202ce4b3bb', 'Accesorios', 'Complementos para dispositivos tecnológicos', NULL, 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQaDsb_5DGdr7B-iOM_f4pOOYrDyI_euSTheA&s'),
+('3af5adef-0d53-4f49-9eda-48e667162ebe', 'Monitores', 'Pantallas de diversos tamaños y resoluciones', NULL, 'https://www.hergotec.com/udecontrol_datos/objetos/48.jpg'),
+('0a88ebb9-c879-486b-bb12-bfc09153af5a', 'Equipos', 'Equipos completos como computadoras y laptops', NULL, 'https://www.claroshop.com/c/algolia/assets/portada/pc.webp'),
+('1b85bd80-f6ac-4438-a93b-127e966f80a8', 'Impresoras', 'Equipos de impresión y multifuncionales', NULL, 'https://quecartucho.es/blog/wp-content/uploads/2018/02/mejores-impresoras.png'),
+('1881b904-8626-43cc-b5ac-e84d0af7a8fb', 'Redes y Conectividad', 'Equipos de comunicación y redes', NULL, 'https://incuatro.com/wp-content/uploads/2019/06/Redes-informaticas.jpg'),
+('f21714f3-ac33-4834-8927-a32b79535ce4', 'Almacenamiento', 'Dispositivos para guardar datos', NULL, 'https://s3.amazonaws.com/s3.timetoast.com/public/uploads/photo/18058726/image/medium-667232431702a487c11eb426a06d2cd1.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAJB6ZCNNAN7BE7WDQ%2F20241117%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20241117T035158Z&X-Amz-Expires=604800&X-Amz-SignedHeaders=host&X-Amz-Signature=b37c11c1873b6a412281737902a1b4676dc3814dcdfdac7ce92d800589567e6c'),
+('87e561ea-1ea0-49c2-9e94-dc1472a40cef', 'Software', 'Programas y licencias digitales', NULL, 'https://redtiseg.com/wp-content/uploads/2023/08/Licencia-de-software.jpg'),
+('20d134d1-27bf-49e9-b9aa-812179cdc92e', 'Gaming', 'Equipos y accesorios para videojuegos', NULL, 'https://www.ikea.com/ext/ingkadam/m/3cf80d93ffee0337/original/PH187075.jpg?f=s');
 
 INSERT INTO public.productos VALUES
 	('c9279638-902a-4bac-a9f0-7f284b20c9ce', 'Resma de Papel A4', 'HP', 'Papel bond tamaño A4 de alta calidad', '1f6c6de1-1a2b-4c3d-a6b8-9f7e1b6d4c1a'),
@@ -79,7 +79,7 @@ INSERT INTO public.proveedores VALUES
 	('cc549435-b867-438c-8053-a475d7d8dfe1', 'Jerde LLC', '48207441-cd00-4ccd-92b9-28c31075b64b', 'kwestnage6@scientificamerican.com', '435-702-2619'),
 	('9d8f7383-2da6-4e5c-9694-5a0e8632b751', 'Schaefer and Sons', '1fcd357b-54da-44de-a34e-689d52ed636d', 'lpietrzak7@stanford.edu', NULL),
 	('cf6cb764-5c4b-4852-a39f-090bab2a98bb', 'Stokes-Mosciski', 'f2553ab2-e2f9-410c-8775-76a1d20ebfd6', 'emusk8@ftc.gov', '904-574-7741'),
-	('6715e6e0-4f2d-4c94-a26e-68be07960e4f', 'Willms LLC', '2a680f1d-3c09-4d6f-8f77-e6209c862b92', 'boshields9@qq.com', '505-247-3562')
+	('6715e6e0-4f2d-4c94-a26e-68be07960e4f', 'Willms LLC', '2a680f1d-3c09-4d6f-8f77-e6209c862b92', 'boshields9@qq.com', '505-247-3562');
 
 INSERT INTO public.productos_proveedores (producto, proveedor, precio, impuesto, total, stock) VALUES
 -- Producto: Resma de Papel A4
@@ -192,7 +192,7 @@ INSERT INTO public.productos_proveedores (producto, proveedor, precio, impuesto,
 -- Producto: Software de Contabilidad
 ('a66d0539-06c9-4e36-b05e-c9ad585bacab', 'ba48eb4a-dbd5-4bb2-836b-8e86770e49c3', 200.00, 30.00, 230.00, 4),
 -- Producto: Sistema Operativo
-('6c4a9097-26e3-4c56-95b9-92ecf8698025', '8723b735-2e34-49de-ab1e-d935ff7bdf16', 150.00, 22.50, 172.50, 7)
+('6c4a9097-26e3-4c56-95b9-92ecf8698025', '8723b735-2e34-49de-ab1e-d935ff7bdf16', 150.00, 22.50, 172.50, 7);
 
 INSERT INTO public.imagenes_productos VALUES
 	('2ec6d575-8b1f-48cf-9ce0-4a59fb4797a2', NULL, 'https://jwenterprises.com.py/userfiles/images/productos/hp-a4.jpg', 'c9279638-902a-4bac-a9f0-7f284b20c9ce'),

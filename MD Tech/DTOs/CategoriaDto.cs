@@ -14,6 +14,8 @@ namespace MD_Tech.DTOs
 
         public Guid? CategoriaPadre { get; set; }
 
+        public string? ImagenUrl { get; set; }
+
         public CategoriaDto() { }
 
         public CategoriaDto(Categoria categoria)
@@ -22,6 +24,7 @@ namespace MD_Tech.DTOs
             Nombre = categoria.Nombre;
             Descripcion = categoria.Descripcion;
             CategoriaPadre = categoria.CategoriaPadre;
+            ImagenUrl = categoria.ImagenUrl;
         }
     }
 }
