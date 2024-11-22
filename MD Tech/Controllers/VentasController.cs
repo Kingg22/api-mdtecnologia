@@ -224,6 +224,7 @@ namespace MD_Tech.Controllers
 
             return new DetalleVenta()
             {
+                Id = detalle.Id ?? Guid.NewGuid(),
                 Venta = ventaId,
                 Cantidad = detalle.Cantidad,
                 PrecioUnitario = precio,
@@ -253,6 +254,7 @@ namespace MD_Tech.Controllers
                 : null;
         }
 
+        [Obsolete("Ya no es necesario, existen annotations para validar antes del controller", false)]
         [SwaggerIgnore]
         private ActionResult? ValidateDetalle(DetalleVentaDto detalle)
         {

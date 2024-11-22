@@ -8,20 +8,20 @@ namespace MD_Tech.DTOs
         public Guid? Id { get; set; }
 
         [Required]
-        public string Nombre { get; set; }
+        public string Nombre { get; set; } = null!;
 
         [Required]
-        public string Marca { get; set; }
+        public string Marca { get; set; } = null!;
 
         public string? Descripcion { get; set; }
 
-        public Guid? Categoria { get; set; }
+        public Guid? Categoria { get; set; } 
 
         public ICollection<ProductoProveedorDto>? Proveedores { get; set; } = [];
 
         public ICollection<ImagenesProductoDto>? Imagenes { get; set; } = [];
 
-        public ProductosDto() { Nombre = string.Empty; Marca = string.Empty; }
+        public ProductosDto() { }
 
         public ProductosDto(Producto producto)
         {
@@ -31,24 +31,11 @@ namespace MD_Tech.DTOs
             Descripcion = producto.Descripcion;
             Categoria = producto.Categoria;
 
-            Imagenes = producto.ImagenesProductos.Select(img => new ImagenesProductoDto()
-            {
-                Id = img.Id,
-                Url = img.Url,
-                Descripcion = img.Descripcion,
-                Producto = img.Producto,
-            }).ToList();
+            Imagenes = producto.ImagenesProductos.Select(img => new ImagenesProductoDto(img)).ToList();
 
-            Proveedores = producto.ProductosProveedores.Select(pp => new ProductoProveedorDto()
-            {
-                Producto = pp.Producto,
-                Proveedor = pp.Proveedor,
-                Precio = pp.Precio,
-                Impuesto = pp.Impuesto,
-                Total = pp.Total,
-                FechaActualizado = pp.FechaActualizado,
-                Stock = pp.Stock,
-            }).ToList();
+            Proveedores = producto.ProductosProveedores
+                .OrderBy(pp => pp.Total)
+                .Select(pp => new ProductoProveedorDto(pp)).ToList();
         }
     }
 }

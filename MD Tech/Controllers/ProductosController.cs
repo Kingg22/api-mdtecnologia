@@ -34,7 +34,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(200, "Operación exitosa", typeof(List<ProductosDto>))]
         public async Task<ActionResult<List<ProductosDto>>> GetProductos([FromQuery] ProductosRequestDto paginacionDto)
         {
-            if (paginacionDto.Page < 0 || paginacionDto.Limit < 0)
+            if (paginacionDto.Page < 0 || paginacionDto.Size < 0)
                 return BadRequest(new { paginacion = "las números de paginación o límites no pueden ser negativos" });
             var query = context.Productos.AsQueryable();
             if (!string.IsNullOrWhiteSpace(paginacionDto.Nombre))
@@ -75,10 +75,10 @@ namespace MD_Tech.Controllers
                 query = query.OrderBy(p => p.Id);
 
             var totalProducts = await context.Productos.CountAsync();
-            var hasNextPage = (paginacionDto.Page + 1) * paginacionDto.Limit < totalProducts;
+            var hasNextPage = (paginacionDto.Page + 1) * paginacionDto.Size < totalProducts;
             // Calcula la página anterior que contiene resultados
             var previousPage = paginacionDto.Page - 1;
-            while (previousPage > 0 && previousPage * paginacionDto.Limit >= totalProducts)
+            while (previousPage > 0 && previousPage * paginacionDto.Size >= totalProducts)
                 previousPage--;
 
             var nextUrl = hasNextPage
@@ -91,13 +91,13 @@ namespace MD_Tech.Controllers
                         Marca = paginacionDto.Marca,
                         Categoria = paginacionDto.Categoria,
                         OrderBy = paginacionDto.OrderBy,
-                        Limit = paginacionDto.Limit,
+                        Size = paginacionDto.Size,
                         Page = paginacionDto.Page + 1
                     },
                     Request.Scheme)
                 : null;
 
-            var previousUrl = previousPage >= 0 && previousPage * paginacionDto.Limit < totalProducts
+            var previousUrl = previousPage >= 0 && previousPage * paginacionDto.Size < totalProducts
                 ? Url.Action(
                     nameof(GetProductos),
                     "Productos",
@@ -107,7 +107,7 @@ namespace MD_Tech.Controllers
                         Marca = paginacionDto.Marca,
                         Categoria = paginacionDto.Categoria,
                         OrderBy = paginacionDto.OrderBy,
-                        Limit = paginacionDto.Limit,
+                        Size = paginacionDto.Size,
                         Page = previousPage
                     },
                     Request.Scheme
@@ -119,8 +119,8 @@ namespace MD_Tech.Controllers
                 next = nextUrl,
                 previous = previousUrl,
                 productos = await query
-                .Skip(paginacionDto.Page * paginacionDto.Limit)
-                .Take(paginacionDto.Limit)
+                .Skip(paginacionDto.Page * paginacionDto.Size)
+                .Take(paginacionDto.Size)
                 .Include(p => p.ImagenesProductos)
                 .Include(p => p.ProductosProveedores)
                 .Select(p => new ProductosDto(p))

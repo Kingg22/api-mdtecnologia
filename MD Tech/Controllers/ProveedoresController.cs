@@ -32,6 +32,7 @@ namespace MD_Tech.Controllers
             {
                 proveedores = await mdtecnologiaContext.Proveedores
                     .AsNoTracking()
+                    .Include(p => p.DireccionNavigation)
                     .Select(p => new ProveedoresDto(p))
                     .ToListAsync()
             });
@@ -214,6 +215,7 @@ namespace MD_Tech.Controllers
         {
             var proveedor = new Proveedor()
             {
+                Id = newProveedor.Id ?? Guid.NewGuid(),
                 Correo = newProveedor.Correo,
                 Nombre = newProveedor.Nombre,
                 Direccion = newProveedor.Direccion?.Id,

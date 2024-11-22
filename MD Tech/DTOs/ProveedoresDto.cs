@@ -9,7 +9,7 @@ namespace MD_Tech.DTOs
 
         [Required]
         [StringLength(100, MinimumLength = 1)]
-        public string Nombre { get; set; }
+        public string Nombre { get; set; } = null!;
 
         [StringLength(255, MinimumLength = 1)]
         public string? Correo { get; set; }
@@ -19,7 +19,7 @@ namespace MD_Tech.DTOs
 
         public DireccionDto? Direccion { get; set; }
 
-        public ProveedoresDto() { Nombre = string.Empty; }
+        public ProveedoresDto() { }
 
         public ProveedoresDto(Proveedor proveedor)
         {

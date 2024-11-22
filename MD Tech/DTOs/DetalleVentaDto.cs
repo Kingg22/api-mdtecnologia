@@ -7,16 +7,22 @@ namespace MD_Tech.DTOs
         public Guid? Id { get; set; }
 
         [Required]
-        public required int Cantidad { get; set; }
+        [Range(1, int.MaxValue)]
+        public int Cantidad { get; set; }
 
+        [Range(0.00, double.MaxValue)]
         public decimal? PrecioUnitario { get; set; }
 
+        [Range(0.00, double.MaxValue)]
         public decimal? Subtotal { get; set; }
 
+        [Range(0.00, double.MaxValue)]
         public decimal? Descuento { get; set; }
 
+        [Range(0.00, double.MaxValue)]
         public decimal? Impuesto { get; set; }
 
+        [Range(0.00, double.MaxValue)]
         public decimal? Total { get; set; }
 
         [Required]
