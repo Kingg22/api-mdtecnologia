@@ -139,6 +139,7 @@ namespace MD_Tech.Controllers
                     Rol = RolesEnum.cliente.ToString()
                 };
                 await mdtecnologiaContext.Usuarios.AddAsync(usuario);
+                await mdtecnologiaContext.SaveChangesAsync();
                 logger.Informacion("Se ha creado un nuevo Usuario");
 
                 var clientedto = new ClienteDto
@@ -263,7 +264,7 @@ namespace MD_Tech.Controllers
                 usuario.Cliente != null)
             { return null; }
 
-            var cliente = new Cliente()
+            var cliente = new Cliente
             {
                 Nombre = newCliente.Nombre,
                 Apellido = newCliente.Apellido,
