@@ -109,7 +109,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(401, "Acceso denegado, razones no especificadas")]
         public async Task<ActionResult<Dictionary<string, string>>> Login([FromBody] LoginRequest loginRequest)
         {
-            var usuario = await Mdtecnologia.Usuarios.FirstOrDefaultAsync(u => u.Username.Equals(loginRequest.Email));
+            var usuario = await Mdtecnologia.Usuarios.Include(u => u.Cliente).FirstOrDefaultAsync(u => u.Username.Equals(loginRequest.Email));
             if (usuario != null)
             {
                 if (usuario.Password != null)
@@ -134,7 +134,8 @@ namespace MD_Tech.Controllers
                         var tokenHandler = new JwtSecurityTokenHandler();
                         var jwtToken = tokenHandler.CreateToken(tokenDes);
                         logger.Informacion($"Se ha generado un nuevo token al usuario: {usuario.Id}");
-                        return Ok(new { token = tokenHandler.WriteToken(jwtToken) });
+                        var cliente = usuario.Cliente != null ? new ClienteDto(usuario.Cliente) : null;
+                        return Ok(new { token = tokenHandler.WriteToken(jwtToken), cliente });
                     }
                     logger.Informacion("login fallido: la contraseña no coincide y/o usuario deshabilitado");
                 }

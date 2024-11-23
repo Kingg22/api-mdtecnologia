@@ -46,7 +46,7 @@ namespace MD_Tech.Controllers
         [SwaggerResponse(404, "Producto no encontrado")]
         public async Task<ActionResult> GetClientes(Guid id)
         {
-            var resultado = await mdtecnologiaContext.Clientes.FindAsync(id);
+            var resultado = await mdtecnologiaContext.Clientes.Include(c => c.Direcciones).FirstOrDefaultAsync(c => c.Id == id);
             return resultado == null ? NotFound() : Ok(new { cliente = new ClienteDto(resultado) });
         }
 
